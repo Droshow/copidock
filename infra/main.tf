@@ -4,8 +4,10 @@ module "storage" {
 }
 
 module "dynamo_db" {
-  source = "./modules/dynamo_db"
-  name   = var.name
+  source                        = "./modules/dynamo_db"
+  name                          = var.name
+  environment                   = var.environment
+  enable_point_in_time_recovery = var.enable_pitr
 }
 
 module "compute_lambda" {
@@ -21,8 +23,8 @@ module "compute_lambda" {
 }
 
 module "api" {
-  source               = "./modules/api"
-  name                 = var.name
-  lambda_arn           = module.compute_lambda.notes_lambda_arn
-  lambda_function_name = module.compute_lambda.notes_lambda_function_name
+  source                = "./modules/api"
+  name                  = var.name
+  lambda_function_arns  = module.compute_lambda.lambda_function_arns
+  lambda_function_names = module.compute_lambda.lambda_function_names
 }

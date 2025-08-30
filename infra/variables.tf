@@ -9,3 +9,15 @@ variable "name" {
   type        = string
   default     = "copidock"
 }
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "enable_pitr" {
+  description = "Enable point-in-time recovery for DynamoDB tables"
+  type        = bool
+  default     = false
+}

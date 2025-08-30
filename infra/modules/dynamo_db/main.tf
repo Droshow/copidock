@@ -1,35 +1,39 @@
 locals {
   dynamodb_tables = {
     chunks = {
-      hash_key   = "ns"
-      range_key  = "sort"
+      hash_key  = "ns"
+      range_key = "sort"
       attributes = {
         ns   = "S"
         sort = "S"
       }
+      description = "Searchable chunks from notes and repositories"
     }
     tokens = {
-      hash_key   = "tok"
-      range_key  = "ns_ts_id"
+      hash_key  = "tok"
+      range_key = "ns_ts_id"
       attributes = {
         tok      = "S"
         ns_ts_id = "S"
       }
+      description = "Token pointers for fast keyword lookup"
     }
     threads = {
-      hash_key   = "thread_id"
-      range_key  = null
+      hash_key  = "thread_id"
+      range_key = null
       attributes = {
         thread_id = "S"
       }
+      description = "Decision threads and their metadata"
     }
     events = {
-      hash_key   = "thread_id"
-      range_key  = "at"
+      hash_key  = "thread_id"
+      range_key = "at"
       attributes = {
         thread_id = "S"
         at        = "S"
       }
+      description = "Thread events and decisions over time"
     }
   }
 }
@@ -50,14 +54,15 @@ resource "aws_dynamodb_table" "tables" {
     }
   }
 
-  tags = {
-    Name        = "${var.name}-${each.key}"
-    Environment = var.environment
-    Project     = var.name
-  }
-
   point_in_time_recovery {
     enabled = var.enable_point_in_time_recovery
+  }
+
+  tags = {
+    Name        = "${var.name}-${each.key}"
+    Description = each.value.description
+    Environment = var.environment
+    Project     = var.name
   }
 
   lifecycle {
