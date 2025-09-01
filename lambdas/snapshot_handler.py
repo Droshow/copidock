@@ -185,11 +185,16 @@ def gather_sources(thread_id, paths):
 def generate_rehydratable_markdown(thread, sources, snapshot_id, timestamp, version):
     """Generate the rehydratable markdown content"""
     
+    # Use consistent ISO format with Z suffix
+    iso_timestamp = timestamp.isoformat() + 'Z'
+    display_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')
+    
     content = f"""# {thread['thread_name']} - Snapshot v{version}
 
 **Thread ID:** `{thread['thread_id']}`  
 **Snapshot ID:** `{snapshot_id}`  
-**Created:** {timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}  
+**Created:** {display_timestamp}  
+**ISO Timestamp:** {iso_timestamp}  
 **Goal:** {thread['goal']}
 
 ## Context

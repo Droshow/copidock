@@ -41,6 +41,14 @@ def create_note(event):
                 'body': json.dumps({'error': 'Content is required'})
             }
         
+        # Guard against oversized notes
+        if len(content.encode("utf-8")) > MAX_NOTE_LEN:
+            return {
+                'statusCode': 413,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Note too large (max 200KB)'})
+            }
+        
         # Generate note ID and timestamp
         note_id = str(uuid.uuid4())
         timestamp = datetime.utcnow().isoformat() + 'Z'
@@ -84,69 +92,6 @@ def create_note(event):
         }
     except Exception as e:
         print(f"Error creating note: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Internal server error'})
-        }
-
-def get_notes(event):
-    """Retrieve notes with optional filtering"""
-    try:
-        query_params = event.get('queryStringParameters') or {}
-        thread_id = query_params.get('thread_id')
-        limit = int(query_params.get('limit', '50'))
-        
-        # Query notes from chunks table
-        if thread_id:
-            # Filter by thread_id if specified
-            response = chunks_table.scan(
-                FilterExpression='#ns = :notes AND #thread_id = :thread_id',
-                ExpressionAttributeNames={
-                    '#ns': 'ns',
-                    '#thread_id': 'thread_id'
-                },
-                ExpressionAttributeValues={
-                    ':notes': 'notes',
-                    ':thread_id': thread_id
-                },
-                Limit=limit
-            )
-        else:
-            # Get all notes
-            response = chunks_table.query(
-                KeyConditionExpression=Key('ns').eq('notes'),
-                ScanIndexForward=False,  # Most recent first
-                Limit=limit
-            )
-        
-        notes = []
-        for item in response.get('Items', []):
-            notes.append({
-                'note_id': item.get('id'),
-                'content': item.get('content'),
-                'tags': item.get('tags', []),
-                'thread_id': item.get('thread_id', ''),
-                'created_at': item.get('created_at'),
-                'source': item.get('source', 'manual_entry')
-            })
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
-            },
-            'body': json.dumps({
-                'notes': notes,
-                'count': len(notes),
-                'thread_id': thread_id
-            })
-        }
-        
-    except Exception as e:
-        print(f"Error retrieving notes: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json'},

@@ -1,29 +1,29 @@
 locals {
   api_routes = {
     post_notes = {
-      route_key   = "POST /notes"
-      lambda_key  = "notes"
-      description = "Create and store notes"
+      route_key    = "POST /notes"
+      lambda_key   = "notes"
+      description  = "Create and store notes"
     }
     get_notes = {
-      route_key   = "GET /notes"
-      lambda_key  = "notes"
-      description = "Retrieve stored notes"
+      route_key    = "GET /notes"
+      lambda_key   = "notes"
+      description  = "Retrieve stored notes"
     }
     post_thread_start = {
-      route_key   = "POST /thread/start"
-      lambda_key  = "thread_start"
-      description = "Start a new decision thread"
+      route_key    = "POST /thread/start"
+      lambda_key   = "thread_start"
+      description  = "Start a new decision thread"
     }
     post_snapshot = {
-      route_key   = "POST /snapshot"
-      lambda_key  = "snapshot"
-      description = "Create thread context snapshot"
+      route_key    = "POST /snapshot"
+      lambda_key   = "snapshot"
+      description  = "Create thread context snapshot"
     }
     get_rehydrate = {
-      route_key   = "GET /rehydrate/{thread}/latest"
-      lambda_key  = "rehydrate"
-      description = "Get latest thread snapshot"
+      route_key    = "GET /rehydrate/{thread_id}/latest"
+      lambda_key   = "rehydrate"
+      description  = "Get latest thread snapshot"
     }
   }
 }

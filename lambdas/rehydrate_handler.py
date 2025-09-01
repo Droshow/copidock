@@ -1,7 +1,7 @@
 import json
 import boto3
 import os
-from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -11,19 +11,19 @@ threads_table = dynamodb.Table(os.environ['DDB_THREADS'])
 
 def handler(event, context):
     """
-    GET /rehydrate/{thread}/latest
+    GET /rehydrate/{thread_id}/latest
     Look up latest version in S3; return presigned URL
     """
     try:
         # Extract thread ID from path parameters
-        path_params = event.get('pathParameters', {})
-        thread_id = path_params.get('thread', '').strip()
+        path_params = event.get('pathParameters', {}) or {}
+        thread_id = (path_params.get('thread_id') or path_params.get('thread') or '').strip()
         
         if not thread_id:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'thread parameter is required'})
+                'body': json.dumps({'error': 'thread_id parameter is required'})
             }
         
         # Get thread details to find latest snapshot
@@ -48,12 +48,20 @@ def handler(event, context):
         # Verify the file exists in S3
         try:
             s3.head_object(Bucket=bucket_name, Key=latest_snapshot_key)
-        except s3.exceptions.NoSuchKey:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Latest snapshot file not found in S3'})
-            }
+        except ClientError as e:
+            if e.response['Error']['Code'] == '404':
+                return {
+                    'statusCode': 404,
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({'error': 'Latest snapshot file not found in S3'})
+                }
+            else:
+                print(f"S3 error checking object: {e}")
+                return {
+                    'statusCode': 500,
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({'error': 'Error accessing snapshot file'})
+                }
         
         # Generate presigned URL (valid for 30 minutes)
         presigned_url = s3.generate_presigned_url(
@@ -66,7 +74,7 @@ def handler(event, context):
         try:
             metadata_response = s3.head_object(Bucket=bucket_name, Key=latest_snapshot_key)
             metadata = metadata_response.get('Metadata', {})
-        except Exception:
+        except ClientError:
             metadata = {}
         
         return {

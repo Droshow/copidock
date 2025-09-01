@@ -105,11 +105,10 @@ resource "aws_lambda_function" "functions" {
 
   environment {
     variables = {
-      BUCKET_NAME      = var.bucket_name
-      DDB_CHUNKS_TABLE = var.ddb_chunks_table
-      DDB_TOKENS_TABLE = var.ddb_tokens_table
-      DDB_THREADS      = var.ddb_threads_table
-      DDB_EVENTS       = var.ddb_events_table
+      BUCKET_NAME       = var.bucket_name
+      DDB_THREADS       = var.ddb_threads_table
+      DDB_CHUNKS_TABLE  = var.ddb_chunks_table
+      DDB_TOKENS_TABLE  = var.ddb_tokens_table
     }
   }
 }
