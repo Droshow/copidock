@@ -21,10 +21,11 @@ copidock/
 │   ├── common/
 │   │   ├── db.py             # DynamoDB utilities
 │   │   └── s3.py             # S3 utilities
-│   ├── notes_handler.py      # POST /notes, GET /notes
-│   ├── sync_handler.py       # POST /sync
-│   ├── retrieve_handler.py   # POST /retrieve
-│   └── rehydrate_handler.py  # POST /thread, POST /thread/{id}/rehydrate
+handlers/
+    ├── thread_start_handler.py   # POST /thread/start
+    ├── snapshot_handler.py       # POST /snapshot
+    ├── rehydrate_handler.py      # GET /rehydrate/{thread}/latest
+└── notes_handler.py (optional)  # POST /notes, GET /notesthread/{id}/rehydrate
 ├── cli/
 │   └── copidock.py           # Typer CLI interface
 ├── config/
@@ -65,12 +66,34 @@ make deploy
 
 ## API Endpoints
 
+### Thread Management
+- `POST /thread/start` - Create a new decision thread
+  - Input: `{ "goal": "string", "repo": "optional", "branch": "optional" }`
+  - Output: `{ "thread_id": "uuid", "thread_name": "string" }`
+
+- `POST /snapshot` - Create a snapshot of thread context
+  - Input: `{ "thread_id": "uuid", "paths": ["optional", "file", "paths"] }`
+  - Output: `{ "presigned_url": "string", "s3_key": "string", "version": number }`
+
+- `GET /rehydrate/{thread}/latest` - Get latest thread snapshot
+  - Output: `{ "presigned_url": "string", "snapshot_metadata": {} }`
+
+### Notes (Optional)
 - `POST /notes` - Store new notes
+  - Input: `{ "content": "string", "tags": ["optional"], "thread_id": "optional" }`
 - `GET /notes` - Retrieve notes
-- `POST /sync` - Sync repository data
-- `POST /retrieve` - Search and retrieve content
-- `POST /thread` - Create decision thread
-- `POST /thread/{id}/rehydrate` - Rehydrate thread context
+  - Query params: `?thread_id=uuid&limit=50`
+
+## Two-Button UX Flow
+
+1. **Start Thread**: `POST /thread/start` with your goal
+2. **Create Snapshot**: `POST /snapshot` with thread_id → opens rehydratable.md
+
+The snapshot contains:
+- Thread goal and context
+- Gathered sources from files/repos
+- Current state and next steps
+- Rehydratable format for continuation
 
 ## Configuration
 
