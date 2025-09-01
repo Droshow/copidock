@@ -3,7 +3,7 @@ import boto3
 import os
 import uuid
 from datetime import datetime
-from urllib.parse import quote
+from botocore.exceptions import ClientError
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
@@ -46,7 +46,26 @@ def handler(event, context):
         snapshot_id = str(uuid.uuid4())
         timestamp = datetime.utcnow()
         date_str = timestamp.strftime('%Y-%m-%d')
-        version = int(thread.get('snapshot_count', 0)) + 1
+        
+        # Atomically increment snapshot_count and get the new version
+        try:
+            update_response = threads_table.update_item(
+                Key={'thread_id': thread_id},
+                UpdateExpression='ADD snapshot_count :inc SET updated_at = :updated',
+                ExpressionAttributeValues={
+                    ':inc': 1,
+                    ':updated': timestamp.isoformat() + 'Z'
+                },
+                ReturnValues='ALL_NEW'
+            )
+            version = int(update_response['Attributes']['snapshot_count'])
+        except Exception as e:
+            print(f"Error incrementing snapshot count: {e}")
+            return {
+                'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Failed to create snapshot version'})
+            }
         
         # Create S3 key for snapshot
         s3_key = f"threads/{thread_id}/{date_str}/v{version:03d}.md"
@@ -77,13 +96,11 @@ def handler(event, context):
             }
         )
         
-        # Update thread with snapshot count
+        # Update thread with latest snapshot key
         threads_table.update_item(
             Key={'thread_id': thread_id},
-            UpdateExpression='SET snapshot_count = :count, updated_at = :updated, latest_snapshot_key = :key',
+            UpdateExpression='SET latest_snapshot_key = :key',
             ExpressionAttributeValues={
-                ':count': version,
-                ':updated': timestamp.isoformat() + 'Z',
                 ':key': s3_key
             }
         )
