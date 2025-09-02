@@ -66,6 +66,6 @@ resource "aws_dynamodb_table" "tables" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
