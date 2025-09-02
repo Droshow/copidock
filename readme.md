@@ -98,3 +98,27 @@ The snapshot contains:
 ## Configuration
 
 Copy `config/copidock.example.yml` to `config/copidock.yml` and update with your settings.
+
+# Copidock - Retrieval Augmented Generation - the personal experiencing of future AI + Human CoWork
+
+**AI doesn't just generate code → it remembers your reasoning and hands it back when you need to rehydrate.**
+
+A serverless decision thread system that externalizes your working memory. Built with AWS Lambda, DynamoDB, and S3.
+
+## Philosophy
+
+> **You don't have to hold everything in your head** → the thread + snapshot becomes your externalized working memory.
+
+> **Infra + state are decoupled** → Terraform gives you reproducibility, snapshots give you rehydration, and AI sits in between gluing it together.
+
+> **You stay in the driver's seat** → AI doesn't decide the roadmap, it gives you structured options, and you decide where to steer.
+
+## How It Works
+
+Instead of losing context when you switch tasks, Copidock creates **decision threads** that capture:
+- Your goal and reasoning
+- Relevant code and documentation
+- Current state and next steps
+- Rehydratable snapshots for continuation
+
+When you return to a thread, the AI can instantly reconstruct your mental model from the snapshot.

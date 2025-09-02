@@ -1,0 +1,53 @@
+# Copidock - Rehydrate Snapshot (Phase 1 Complete)
+
+**Date:** 2025-09-02  
+**Phase:** End of Phase 1 (Infra + API skeletons)  
+**Thread Goal:** Bring up baseline infra for Copidock (API Gateway, Lambdas, DynamoDB, S3).  
+
+---
+
+## Current State
+
+- ✅ Infra deployed successfully via Terraform.  
+- ✅ API Gateway and Lambda wiring confirmed live:
+  - `/thread/start`
+  - `/snapshot`
+  - `/rehydrate/{thread_id}/latest`
+  - `/notes` (POST + GET)  
+- ✅ Endpoints return placeholder responses (showing routing + Lambda invocation works).  
+- ✅ DynamoDB tables and S3 bucket provisioned, no errors on access.  
+
+---
+
+## Next Steps (Phase 2 Checklist)
+
+1. **Replace Lambda placeholders**  
+   - Swap stubbed “%” responses with full logic already drafted in Python:
+     - `thread_handler`: create threads in DynamoDB.  
+     - `snapshot_handler`: generate markdown snapshot, store in S3.  
+     - `rehydrate_handler`: fetch latest snapshot, return presigned URL.  
+     - `notes_handler`: store/retrieve notes in DynamoDB.  
+
+2. **Verify DynamoDB integration**  
+   - Test creating a thread, writing notes, retrieving them.  
+   - Check snapshot metadata written to `copidock-threads`.  
+
+3. **Verify S3 integration**  
+   - Snapshot uploads produce `.md` files in the `copidock-store-*` bucket.  
+   - Confirm presigned URL fetch works for rehydrate.  
+
+4. **Minimal UX script (Phase 2.5)**  
+   - Add a bash/python CLI wrapper for curl commands.  
+   - Target: `copidock thread start`, `copidock snapshot`, `copidock notes add`, etc.  
+
+---
+
+## Notes
+
+- Infra is stable and repeatable (`terraform apply` clean).  
+- Phase 2 is about replacing skeleton handlers with full functionality and validating data flow.  
+- Optional: once Lambdas are solid, move toward CLI/VS Code “two-button” UX.  
+
+---
+
+*This snapshot captures the close of Phase 1 and sets up Phase 2 work items for Copidock development.*
