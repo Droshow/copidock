@@ -1,0 +1,27 @@
+Now that the backend is tested and solid, you’ve got two natural next steps:
+
+Developer UX polish (Phase 3):
+
+Write a CLI wrapper (copidock command) to hide the curl messiness.
+
+Commands like:
+
+copidock thread start "Deploy Phase 3 infra"
+copidock note add "Reminder: update Lambda IAM role"
+copidock snapshot add --paths infra/main.tf lambdas/*
+copidock rehydrate latest
+
+
+This keeps the workflow git-like and smooth.
+
+IDE integration (Phase 4):
+
+Start lightweight with a VS Code extension that just surfaces:
+
+“Start thread”
+
+“Add note”
+
+“Snapshot current context”
+
+For now, it can just shell out to the CLI or hit your API.

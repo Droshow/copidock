@@ -1,22 +1,22 @@
 locals {
   lambda_functions = {
     notes = {
-      handler     = "lambda_function.handler"
+      handler     = "notes_handler.handler"
       timeout     = 10
       description = "Handle notes operations"
     }
     thread_start = {
-      handler     = "lambda_function.handler"
+      handler     = "thread_start_handler.handler"
       timeout     = 10
       description = "Start new decision threads"
     }
     snapshot = {
-      handler     = "lambda_function.handler"
+      handler     = "snapshot_handler.handler"
       timeout     = 30
       description = "Create snapshots of thread context"
     }
     rehydrate = {
-      handler     = "lambda_function.handler"
+      handler     = "rehydrate_handler.handler"
       timeout     = 10
       description = "Rehydrate thread context from snapshots"
     }
@@ -84,10 +84,9 @@ data "archive_file" "lambda_zip" {
 
   type        = "zip"
   output_path = "${path.module}/${each.key}_lambda.zip"
-  source {
-    content  = "def handler(event, context): return {'statusCode': 200, 'body': '${each.value.description}'}"
-    filename = "lambda_function.py"
-  }
+
+  source_dir = "${path.root}/../lambdas"
+  excludes   = ["__pycache__", "*.pyc"]
 }
 
 # Lambda functions
@@ -106,9 +105,9 @@ resource "aws_lambda_function" "functions" {
   environment {
     variables = {
       BUCKET_NAME      = var.bucket_name
-      DDB_CHUNKS_TABLE = var.ddb_chunks_table  
-      DDB_THREADS      = var.ddb_threads_table   
-      DDB_EVENTS       = var.ddb_events_table  
+      DDB_CHUNKS_TABLE = var.ddb_chunks_table
+      DDB_THREADS      = var.ddb_threads_table
+      DDB_EVENTS       = var.ddb_events_table
       DDB_TOKENS_TABLE = var.ddb_tokens_table
     }
   }
