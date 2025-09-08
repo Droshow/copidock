@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 setup(
     name="copidock",
     version="0.2.0",
-    py_modules=["main", "api", "config"], 
-    packages=["commands"],
+    # packages=find_packages(include=["cli", "cli.*"]),
+    packages=find_packages(),
     install_requires=[
         "typer[all]>=0.9.0",
         "requests>=2.28.0",
@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "copidock=main:app",
+            "copidock=copidock.cli.main:app",  # <- points to app in cli/main.py
         ],
     },
     python_requires=">=3.8",
