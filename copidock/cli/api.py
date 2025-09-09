@@ -4,7 +4,9 @@ from typing import Optional, Tuple, Dict, Any
 import requests
 from rich import print as rprint
 
-from ..config import load_config
+# was: from ..config import load_config   (this causes your error)
+from ..config.config import load_config
+
 
 def terraform_api_fallback() -> Optional[str]:
     """Try to get API URL from terraform output"""

@@ -6,6 +6,11 @@ from .commands.thread import thread_start
 from .api import CopidockAPI, resolve_api
 from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
 
+# ...rest of your code stays the same...
+
+# ^ if you keep config/ at repo root; make sure config/__init__.py exists
+
+
 app = typer.Typer(add_completion=False, help="Copidock CLI - Serverless note management")
 
 @app.command("thread")

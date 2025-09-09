@@ -1,14 +1,8 @@
 from typing import Optional
 import typer
 from rich import print as rprint
-
-# Use relative imports since we're in a subdirectory
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-
-from api import CopidockAPI, resolve_api
-from copidock.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
+from ..api import CopidockAPI, resolve_api
+from ...config.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
 
 def thread_start(
     goal: str,
