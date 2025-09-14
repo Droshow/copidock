@@ -74,6 +74,7 @@ def note_cmd(
 def snapshot_cmd(
     action: str = typer.Argument(..., help="Action: create"),
     message: Optional[str] = typer.Option("", "--message", help="Snapshot message"),
+    auto: bool = typer.Option(False, "--auto", help="Auto-gather git changes"),
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
@@ -93,13 +94,42 @@ def snapshot_cmd(
     
     api_base, api_key, timeout = resolve_api(profile, api)
     client = CopidockAPI(api_base, api_key, timeout)
+
+    # Handle auto mode
+    if auto:
+        from .gather import build_smart_paths
+        
+        try:
+            file_paths, stats = build_smart_paths(str(repo_root))
+            
+            if not file_paths:
+                rprint("[yellow]No relevant changed files found[/yellow]")
+                raise typer.Exit(0)
+            
+            # Show what we're including
+            if not json_out:
+                rprint(f"[green]Auto-detected {stats['final_count']} files[/green]")
+                rprint(f"[dim]Filtered: {stats['total_changed']} → {stats['after_filtering']} → {stats['final_count']} files[/dim]")
+                for path in file_paths[:5]:  # Show first 5
+                    rprint(f"[dim]  • {path}[/dim]")
+                if len(file_paths) > 5:
+                    rprint(f"[dim]  ... and {len(file_paths) - 5} more[/dim]")
+        
+        except Exception as e:
+            rprint(f"[red]Error gathering files:[/red] {e}")
+            raise typer.Exit(1)
+    else:
+        # Manual mode - use empty paths (existing behavior)
+        file_paths = []
     
     try:
-        data = client.create_snapshot(thread_id, message)
+        data = client.create_snapshot(thread_id, file_paths, message)  # ← Fixed signature
         if json_out:
             rprint(data)
         else:
             rprint(f"[green]Snapshot created[/green]: {data['snapshot_id']}")
+            if auto and file_paths:
+                rprint(f"[dim]Included {len(file_paths)} files[/dim]")
     except Exception as e:
         rprint(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -127,7 +157,7 @@ def rehydrate_cmd(
     client = CopidockAPI(api_base, api_key, timeout)
     
     try:
-        data = client.restore_snapshot(snapshot_id)
+        data = client.get_latest_snapshot(snapshot_id)
         
         # Update local state with restored thread_id
         state = load_state(repo_root)

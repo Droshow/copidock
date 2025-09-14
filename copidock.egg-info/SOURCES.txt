@@ -8,6 +8,7 @@ copidock.egg-info/requires.txt
 copidock.egg-info/top_level.txt
 copidock/cli/__init__.py
 copidock/cli/api.py
+copidock/cli/gather.py
 copidock/cli/main.py
 copidock/cli/commands/__init__.py
 copidock/cli/commands/thread.py

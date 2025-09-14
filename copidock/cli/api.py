@@ -7,19 +7,6 @@ from rich import print as rprint
 # was: from ..config import load_config   (this causes your error)
 from ..config.config import load_config
 
-
-def terraform_api_fallback() -> Optional[str]:
-    """Try to get API URL from terraform output"""
-    try:
-        result = subprocess.check_output(
-            ["terraform", "output", "-raw", "api_url"],
-            stderr=subprocess.DEVNULL,
-            timeout=2
-        )
-        return result.decode().strip()
-    except Exception:
-        return None
-
 def resolve_api(profile: str, explicit_api: Optional[str]) -> Tuple[str, Optional[str], int]:
     """Resolve API base URL, key, and timeout"""
     # Precedence: flag > env > config > terraform
@@ -34,7 +21,7 @@ def resolve_api(profile: str, explicit_api: Optional[str]) -> Tuple[str, Optiona
         )
     
     config = load_config(profile)
-    api_base = config.get("api_base") or terraform_api_fallback()
+    api_base = config.get("api_base")
     
     if not api_base:
         rprint("[red]No API base configured. Set --api, COPIDOCK_API, or ~/.copidock/config.toml[/red]")
@@ -84,9 +71,13 @@ class CopidockAPI:
         response.raise_for_status()
         return response.json()
     
-    def create_snapshot(self, thread_id: str, paths: list = None) -> Dict[str, Any]:
+    def create_snapshot(self, thread_id: str, paths: list = None, message: str = "") -> Dict[str, Any]:
         """Create a snapshot"""
-        payload = {"thread_id": thread_id, "paths": paths or []}
+        payload = {
+            "thread_id": thread_id, 
+            "paths": paths or [],
+            "message": message
+        }
         response = requests.post(
             f"{self.api_base}/snapshot",
             headers=self._headers(),
