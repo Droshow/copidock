@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 import requests
 from rich import print as rprint
 
@@ -92,6 +92,24 @@ class CopidockAPI:
         response = requests.get(
             f"{self.api_base}/rehydrate/{thread_id}/latest",
             headers=self._headers(),
+            timeout=self.timeout
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def create_comprehensive_snapshot(self, thread_id: str, inline_sources: List[dict], 
+                                    synth_sections: dict, message: str = "") -> Dict[str, Any]:
+        """Create comprehensive snapshot with synthesized sections"""
+        payload = {
+            "thread_id": thread_id,
+            "message": message,
+            "inline_sources": inline_sources,
+            "synth": synth_sections
+        }
+        response = requests.post(
+            f"{self.api_base}/snapshot/comprehensive",
+            headers=self._headers(),
+            json=payload,
             timeout=self.timeout
         )
         response.raise_for_status()

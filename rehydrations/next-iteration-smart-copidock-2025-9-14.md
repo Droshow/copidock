@@ -36,13 +36,13 @@ You are a senior Python developer building intelligent snapshot synthesis.
 **Pipeline Tasks**
 1. **Extend gather.py**: Add note fetching, commit analysis, and "important files" logic
 2. **Create synthesis.py**: Build templating system for operator instructions, current state, decisions
-3. **Add ranking logic**: Simple relevance scoring (recency + changes + keywords)
+3. **Add ranking logic**: Simple relevance scoring (recency + changes + keywords)  not just yet
 4. **Update backend**: Handle inline_sources + synthesized sections
 5. **Add --comprehensive flag**: Generate full rehydration snapshots
 
 **Expected Outputs**
 - Rich rehydration snapshots with operator instructions, current state, decisions
-- Smart file ranking and token budget management
+<!-- - Smart file ranking and token budget management -->
 - Deterministic synthesis without LLM dependency
 - Optional LLM enhancement for summaries
 
@@ -259,10 +259,10 @@ def create_comprehensive_snapshot(self, thread_id: str, inline_sources: List[dic
 ## Implementation Plan
 
 ### Week 1: Foundation
-- [ ] **Day 1-2**: Extend `gather.py` with notes fetching and important files
-- [ ] **Day 3**: Create `synthesis.py` with basic templating
-- [ ] **Day 4**: Add `ranking.py` with relevance scoring
-- [ ] **Day 5**: Integrate `--comprehensive` flag in main.py
+- [x] **Day 1-2**: Extend `gather.py` with notes fetching and important files
+- [x] **Day 3**: Create `synthesis.py` with basic templating
+- [WONT DO] **Day 4**: Add `ranking.py` with relevance scoring
+- [x] **Day 5**: Integrate `--comprehensive` flag in main.py
 
 ### Week 2: Enhancement  
 - [ ] **Day 1-2**: Update backend to handle synthesized sections

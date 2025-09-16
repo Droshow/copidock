@@ -1,6 +1,7 @@
 import typer
 from typing import Optional
 from rich import print as rprint
+from pathlib import Path
 
 from .commands.thread import thread_start
 from .api import CopidockAPI, resolve_api
@@ -75,6 +76,7 @@ def snapshot_cmd(
     action: str = typer.Argument(..., help="Action: create"),
     message: Optional[str] = typer.Option("", "--message", help="Snapshot message"),
     auto: bool = typer.Option(False, "--auto", help="Auto-gather git changes"),
+    comprehensive: bool = typer.Option(False, "--comprehensive", help="Generate comprehensive rehydration"),
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
@@ -95,8 +97,76 @@ def snapshot_cmd(
     api_base, api_key, timeout = resolve_api(profile, api)
     client = CopidockAPI(api_base, api_key, timeout)
 
+    # Handle comprehensive mode
+    if comprehensive:
+        from .gather import gather_comprehensive
+        from .synthesis import generate_comprehensive_snapshot
+        
+        try:
+            # Get thread data for synthesis
+            thread_data = {
+                'goal': state.get('goal', 'development task'),
+                'repo': state.get('repo', ''),
+                'branch': state.get('branch', 'main')
+            }
+            
+            # Comprehensive gathering
+            file_paths, recent_commits, notes = gather_comprehensive(str(repo_root), thread_id)
+            
+            if not file_paths:
+                rprint("[yellow]No relevant files found for comprehensive snapshot[/yellow]")
+                raise typer.Exit(0)
+            
+            # Generate synthesis sections
+            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root))
+            
+            # Create inline sources
+            inline_sources = []
+            for file_path in file_paths:
+                try:
+                    full_path = Path(repo_root) / file_path
+                    if full_path.exists():
+                        content = full_path.read_text(errors='ignore')
+                        file_ext = full_path.suffix.lstrip('.')
+                        
+                        # Map extensions to languages
+                        language_map = {
+                            'py': 'python', 'js': 'javascript', 'ts': 'typescript',
+                            'tf': 'hcl', 'yml': 'yaml', 'yaml': 'yaml',
+                            'json': 'json', 'md': 'markdown', 'sh': 'bash'
+                        }
+                        language = language_map.get(file_ext, 'text')
+                        
+                        inline_sources.append({
+                            'path': file_path,
+                            'language': language,
+                            'content': content
+                        })
+                except Exception:
+                    continue
+            
+            # Show what we're including
+            if not json_out:
+                rprint(f"[green]Comprehensive snapshot with {len(file_paths)} files[/green]")
+                rprint(f"[dim]Recent commits: {len(recent_commits)}[/dim]")
+                rprint(f"[dim]Synthesis sections: {len(synth_sections)}[/dim]")
+            
+            # Create comprehensive snapshot
+            data = client.create_comprehensive_snapshot(thread_id, inline_sources, synth_sections, message)
+            
+            # Comprehensive mode output
+            if json_out:
+                rprint(data)
+            else:
+                rprint(f"[green]Comprehensive snapshot created[/green]: {data['snapshot_id']}")
+                rprint(f"[dim]Included {len(inline_sources)} files with full synthesis[/dim]")
+                
+        except Exception as e:
+            rprint(f"[red]Error creating comprehensive snapshot:[/red] {e}")
+            raise typer.Exit(1)
+    
     # Handle auto mode
-    if auto:
+    elif auto:
         from .gather import build_smart_paths
         
         try:
@@ -114,25 +184,31 @@ def snapshot_cmd(
                     rprint(f"[dim]  • {path}[/dim]")
                 if len(file_paths) > 5:
                     rprint(f"[dim]  ... and {len(file_paths) - 5} more[/dim]")
+            
+            # Create regular snapshot
+            data = client.create_snapshot(thread_id, file_paths, message)
+            
+            if json_out:
+                rprint(data)
+            else:
+                rprint(f"[green]Snapshot created[/green]: {data['snapshot_id']}")
+                rprint(f"[dim]Included {len(file_paths)} files[/dim]")
         
         except Exception as e:
             rprint(f"[red]Error gathering files:[/red] {e}")
             raise typer.Exit(1)
-    else:
-        # Manual mode - use empty paths (existing behavior)
-        file_paths = []
     
-    try:
-        data = client.create_snapshot(thread_id, file_paths, message)  # ← Fixed signature
-        if json_out:
-            rprint(data)
-        else:
-            rprint(f"[green]Snapshot created[/green]: {data['snapshot_id']}")
-            if auto and file_paths:
-                rprint(f"[dim]Included {len(file_paths)} files[/dim]")
-    except Exception as e:
-        rprint(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+    else:
+        # Manual mode - use empty paths
+        try:
+            data = client.create_snapshot(thread_id, [], message)
+            if json_out:
+                rprint(data)
+            else:
+                rprint(f"[green]Snapshot created[/green]: {data['snapshot_id']}")
+        except Exception as e:
+            rprint(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1)
     
 @app.command("rehydrate")
 def rehydrate_cmd(
