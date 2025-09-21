@@ -1,9 +1,11 @@
 import subprocess
 import os
 import glob
+import re
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 from datetime import datetime, timedelta
+
 # File filtering constants
 SKIP_EXTENSIONS = {'.log', '.cache', '.tmp', '.lock', '.pyc', '.pyo', '.pyd', '.so'}
 SKIP_DIRECTORIES = {'node_modules', '.git', '__pycache__', '.pytest_cache', 'venv', '.venv', 'dist', 'build'}
@@ -139,32 +141,107 @@ def build_smart_paths(repo_root: str, max_tokens: int = 6000) -> Tuple[List[str]
     }
     
     return final_files, stats
+
 def get_recent_commits(repo_root: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """Get recent commits for context"""
+    """Enhanced commit fetching with more metadata"""
     try:
+        # Get commits with more detailed format
         result = subprocess.run(
-            ["git", "log", f"--max-count={limit}", "--pretty=format:%H|%s|%ar|%an"],
-            cwd=repo_root, capture_output=True, text=True, timeout=10
+            ["git", "log", f"--max-count={limit}", 
+             "--pretty=format:%H|%s|%ar|%an|%ae|%B"],
+            cwd=repo_root, capture_output=True, text=True, timeout=15
         )
         
         if result.returncode != 0:
             return []
-            
-        commits = []
-        for line in result.stdout.strip().split('\n'):
-            if line:
-                parts = line.split('|')
-                if len(parts) >= 4:
-                    commits.append({
-                        'hash': parts[0],
-                        'subject': parts[1],
-                        'time_ago': parts[2],
-                        'author': parts[3]
-                    })
         
-        return commits
-    except Exception:
+        commits = []
+        commit_entries = result.stdout.strip().split('\n\n')  # Split by empty lines
+        
+        for entry in commit_entries:
+            if not entry.strip():
+                continue
+                
+            lines = entry.split('\n')
+            if not lines:
+                continue
+                
+            # Parse the first line with commit info
+            first_line = lines[0]
+            parts = first_line.split('|')
+            
+            if len(parts) >= 4:
+                # Get commit body (everything after first line)
+                body_lines = lines[1:] if len(lines) > 1 else []
+                body = '\n'.join(body_lines).strip()
+                
+                commit_data = {
+                    'hash': parts[0],
+                    'subject': parts[1],
+                    'time_ago': parts[2],
+                    'author': parts[3],
+                    'email': parts[4] if len(parts) > 4 else '',
+                    'body': body
+                }
+                
+                # Add commit analysis
+                commit_data.update(analyze_single_commit(commit_data))
+                commits.append(commit_data)
+        
+        return commits[:limit]
+        
+    except Exception as e:
+        print(f"Error fetching commits: {e}")
         return []
+
+def analyze_single_commit(commit: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze a single commit for additional metadata"""
+    subject = commit['subject'].lower()
+    full_text = f"{commit['subject']} {commit.get('body', '')}".lower()
+    
+    analysis = {
+        'type': 'other',
+        'scope': [],
+        'breaking_change': False,
+        'closes_issue': False
+    }
+    
+    # Determine commit type
+    if any(word in subject for word in ['fix', 'bug', 'error', 'issue']):
+        analysis['type'] = 'fix'
+    elif any(word in subject for word in ['feat', 'feature', 'add', 'implement']):
+        analysis['type'] = 'feat'
+    elif any(word in subject for word in ['refactor', 'cleanup', 'improve']):
+        analysis['type'] = 'refactor'
+    elif any(word in subject for word in ['test', 'spec', 'coverage']):
+        analysis['type'] = 'test'
+    elif any(word in subject for word in ['doc', 'readme', 'comment']):
+        analysis['type'] = 'docs'
+    elif any(word in subject for word in ['config', 'setup', 'env', 'deploy']):
+        analysis['type'] = 'config'
+    
+    # Check for scope indicators
+    scope_patterns = {
+        'api': ['api', 'endpoint', 'route', 'server'],
+        'ui': ['ui', 'frontend', 'component', 'css', 'html'],
+        'db': ['database', 'db', 'migration', 'schema'],
+        'auth': ['auth', 'login', 'security', 'token'],
+        'infra': ['infra', 'deploy', 'terraform', 'aws', 'docker']
+    }
+    
+    for scope, keywords in scope_patterns.items():
+        if any(keyword in full_text for keyword in keywords):
+            analysis['scope'].append(scope)
+    
+    # Check for breaking changes
+    analysis['breaking_change'] = any(indicator in full_text for indicator in 
+                                    ['breaking', 'breaking change', 'major', '!'])
+    
+    # Check for issue closure
+    analysis['closes_issue'] = bool(re.search(r'(?:close|closes|fix|fixes|resolve|resolves)\s+#?\d+', 
+                                            full_text, re.IGNORECASE))
+    
+    return analysis
 
 def find_important_files(repo_root: str) -> List[str]:
     """Find always-important files using glob patterns"""

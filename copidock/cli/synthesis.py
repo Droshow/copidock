@@ -139,42 +139,145 @@ def synthesize_current_state(recent_commits: List[Dict[str, Any]], file_categori
     return "\n".join(state_parts)
 
 def mine_open_questions(file_paths: List[str], repo_root: str, recent_commits: List[Dict[str, Any]]) -> str:
-    """Extract TODOs, FIXMEs, and questions from files and commits"""
-    patterns = [
-        r"TODO:?\s*(.+)", r"FIXME:?\s*(.+)", r"QUESTION:?\s*(.+)", 
-        r"TBD:?\s*(.+)", r"XXX:?\s*(.+)", r"HACK:?\s*(.+)"
-    ]
+    """Enhanced extraction of TODOs, FIXMEs, and questions from files and commits"""
     
-    questions = []
+    # Enhanced patterns with context capture
+    patterns = {
+        'TODO': r'(?:TODO|@todo):?\s*(.{3,100})',
+        'FIXME': r'(?:FIXME|@fixme):?\s*(.{3,100})',
+        'QUESTION': r'(?:QUESTION|@question|\?{2,}):?\s*(.{3,100})',
+        'TBD': r'(?:TBD|@tbd):?\s*(.{3,100})',
+        'HACK': r'(?:HACK|@hack):?\s*(.{3,100})',
+        'XXX': r'(?:XXX|@xxx):?\s*(.{3,100})',
+        'NOTE': r'(?:NOTE|@note):?\s*(.{3,100})',
+        'REVIEW': r'(?:REVIEW|@review):?\s*(.{3,100})'
+    }
     
-    # Scan files for TODO/FIXME comments
-    for file_path in file_paths[:10]:  # Limit to first 10 files to avoid performance issues
+    questions_by_type = {ptype: [] for ptype in patterns.keys()}
+    
+    # Scan files with better error handling and line numbers
+    for file_path in file_paths[:15]:  # Increased limit but still reasonable
         try:
             full_path = Path(repo_root) / file_path
-            if full_path.exists() and full_path.is_file():
-                content = full_path.read_text(errors='ignore')
-                for pattern in patterns:
-                    matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
+            if not full_path.exists() or not full_path.is_file():
+                continue
+                
+            # Skip binary and large files
+            if full_path.stat().st_size > 1024 * 1024:  # Skip files > 1MB
+                continue
+                
+            content = full_path.read_text(errors='ignore')
+            lines = content.split('\n')
+            
+            for line_num, line in enumerate(lines, 1):
+                for pattern_type, pattern in patterns.items():
+                    matches = re.findall(pattern, line, re.IGNORECASE)
                     for match in matches:
-                        questions.append(f"**{file_path}**: {match.strip()}")
-        except Exception:
-            continue
+                        clean_match = match.strip().rstrip('.,;:')
+                        if len(clean_match) > 5:  # Filter out very short matches
+                            questions_by_type[pattern_type].append({
+                                'text': clean_match,
+                                'file': file_path,
+                                'line': line_num,
+                                'context': line.strip()[:80] + '...' if len(line.strip()) > 80 else line.strip()
+                            })
+        except Exception as e:
+            continue  # Skip problematic files
     
-    # Also check commit messages
+    # Enhanced commit message analysis
     for commit in recent_commits:
-        for pattern in patterns:
-            matches = re.findall(pattern, commit['subject'], re.IGNORECASE)
+        commit_text = f"{commit['subject']} {commit.get('body', '')}"
+        for pattern_type, pattern in patterns.items():
+            matches = re.findall(pattern, commit_text, re.IGNORECASE)
             for match in matches:
-                questions.append(f"**Commit {commit['hash'][:8]}**: {match.strip()}")
+                clean_match = match.strip().rstrip('.,;:')
+                if len(clean_match) > 5:
+                    questions_by_type[pattern_type].append({
+                        'text': clean_match,
+                        'file': f"Commit {commit['hash'][:8]}",
+                        'line': 0,
+                        'context': commit['subject']
+                    })
     
-    # Format questions
-    if questions:
-        formatted = "## Open Questions\n\n"
-        for i, question in enumerate(questions[:10], 1):  # Limit to top 10
-            formatted += f"{i}. {question}\n"
-        return formatted
-    else:
+    # Format enhanced output
+    if not any(questions_by_type.values()):
         return "## Open Questions\n\nNo open questions found in recent changes."
+    
+    output = ["## Open Questions\n"]
+    
+    # Prioritize question types
+    priority_types = ['FIXME', 'TODO', 'QUESTION', 'REVIEW', 'HACK', 'TBD', 'XXX', 'NOTE']
+    
+    question_count = 0
+    for qtype in priority_types:
+        questions = questions_by_type[qtype]
+        if questions and question_count < 12:  # Limit total questions
+            output.append(f"### {qtype}s\n")
+            
+            for q in questions[:4]:  # Max 4 per type
+                if question_count >= 12:
+                    break
+                    
+                output.append(f"{question_count + 1}. **{q['text']}**")
+                output.append(f"   - *{q['file']}:{q['line']}*")
+                if q['context'] != q['text']:
+                    output.append(f"   - Context: `{q['context']}`")
+                output.append("")
+                question_count += 1
+    
+    return "\n".join(output)
+def analyze_commit_patterns(recent_commits: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Analyze commit patterns for insights"""
+    if not recent_commits:
+        return {}
+    
+    patterns = {
+        'fix_commits': 0,
+        'feature_commits': 0,
+        'refactor_commits': 0,
+        'test_commits': 0,
+        'docs_commits': 0,
+        'config_commits': 0,
+        'common_words': {},
+        'urgency_indicators': []
+    }
+    
+    urgency_words = ['urgent', 'critical', 'hotfix', 'emergency', 'asap', 'breaking']
+    
+    for commit in recent_commits:
+        subject = commit['subject'].lower()
+        
+        # Categorize commits
+        if any(word in subject for word in ['fix', 'bug', 'error', 'issue']):
+            patterns['fix_commits'] += 1
+        elif any(word in subject for word in ['feat', 'feature', 'add', 'implement']):
+            patterns['feature_commits'] += 1
+        elif any(word in subject for word in ['refactor', 'cleanup', 'improve']):
+            patterns['refactor_commits'] += 1
+        elif any(word in subject for word in ['test', 'spec', 'coverage']):
+            patterns['test_commits'] += 1
+        elif any(word in subject for word in ['doc', 'readme', 'comment']):
+            patterns['docs_commits'] += 1
+        elif any(word in subject for word in ['config', 'setup', 'env']):
+            patterns['config_commits'] += 1
+        
+        # Check for urgency
+        for word in urgency_words:
+            if word in subject:
+                patterns['urgency_indicators'].append({
+                    'commit': commit['hash'][:8],
+                    'word': word,
+                    'subject': commit['subject']
+                })
+        
+        # Count common words (skip stopwords)
+        stopwords = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        words = re.findall(r'\b\w{3,}\b', subject.lower())
+        for word in words:
+            if word not in stopwords:
+                patterns['common_words'][word] = patterns['common_words'].get(word, 0) + 1
+    
+    return patterns
 
 def synthesize_decisions_constraints(thread_data: Dict[str, Any], file_categories: Dict[str, List[str]]) -> str:
     """Generate decisions and constraints section"""

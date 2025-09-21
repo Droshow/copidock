@@ -265,8 +265,8 @@ def create_comprehensive_snapshot(self, thread_id: str, inline_sources: List[dic
 - [x] **Day 5**: Integrate `--comprehensive` flag in main.py
 
 ### Week 2: Enhancement  
-- [ ] **Day 1-2**: Update backend to handle synthesized sections
-- [ ] **Day 3**: Add question mining and commit analysis
+- [x] **Day 1-2**: Update backend to handle synthesized sections
+- [x] **Day 3**: Add question mining and commit analysis
 - [ ] **Day 4**: Polish templates and heuristics
 - [ ] **Day 5**: Test comprehensive workflow end-to-end
 

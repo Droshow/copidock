@@ -1,29 +1,40 @@
 locals {
   api_routes = {
     post_notes = {
-      route_key    = "POST /notes"
-      lambda_key   = "notes"
-      description  = "Create and store notes"
+      route_key   = "POST /notes"
+      lambda_key  = "notes"
+      description = "Create and store notes"
     }
     get_notes = {
-      route_key    = "GET /notes"
-      lambda_key   = "notes"
-      description  = "Retrieve stored notes"
+      route_key   = "GET /notes"
+      lambda_key  = "notes"
+      description = "Retrieve stored notes"
     }
     post_thread_start = {
-      route_key    = "POST /thread/start"
-      lambda_key   = "thread_start"
-      description  = "Start a new decision thread"
+      route_key   = "POST /thread/start"
+      lambda_key  = "thread_start"
+      description = "Start a new decision thread"
     }
     post_snapshot = {
-      route_key    = "POST /snapshot"
-      lambda_key   = "snapshot"
-      description  = "Create thread context snapshot"
+      route_key   = "POST /snapshot"
+      lambda_key  = "snapshot"
+      description = "Create thread context snapshot"
     }
     get_rehydrate = {
-      route_key    = "GET /rehydrate/{thread_id}/latest"
-      lambda_key   = "rehydrate"
-      description  = "Get latest thread snapshot"
+      route_key   = "GET /rehydrate/{thread_id}/latest"
+      lambda_key  = "rehydrate"
+      description = "Get latest thread snapshot"
+    }
+    # Add comprehensive routes to the main api_routes
+    post_snapshot_comprehensive = {
+      route_key   = "POST /snapshot/comprehensive"
+      lambda_key  = "snapshot" # Same lambda as regular snapshot
+      description = "Create comprehensive thread snapshot with synthesis"
+    }
+    options_snapshot_comprehensive = {
+      route_key   = "OPTIONS /snapshot/comprehensive"
+      lambda_key  = "snapshot" # Same lambda as regular snapshot
+      description = "CORS preflight for comprehensive snapshots"
     }
   }
 }
@@ -58,7 +69,7 @@ resource "aws_apigatewayv2_integration" "lambda_integrations" {
   description            = "Integration for ${each.value} Lambda function"
 }
 
-# Routes
+# Routes (all routes including comprehensive)
 resource "aws_apigatewayv2_route" "routes" {
   for_each = local.api_routes
 
