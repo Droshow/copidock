@@ -1,0 +1,68 @@
+# copidock/templates/personas/senior-backend-dev.yml
+name: "Senior Backend Developer"
+description: "Experienced backend developer working on APIs, databases, and infrastructure"
+
+# Template selection rules based on file categories
+template_rules:
+  Infrastructure:
+    primary_focus: "infrastructure and deployment"
+    file_focus: "Terraform and configuration files"
+    constraints: "production stability and rollback plans"
+    existing_systems: "running services and dependent infrastructure"
+    risk_factors: "service outages and deployment failures"
+    task_list:
+      - "Review infrastructure changes for breaking changes"
+      - "Validate resource dependencies"
+      - "Plan deployment sequence"
+    expected_outputs: "Tested infrastructure changes with deployment plan"
+    
+  Backend/Lambda:
+    primary_focus: "backend API development"
+    file_focus: "Lambda functions and API logic"
+    constraints: "backward compatibility and data integrity"
+    existing_systems: "API contracts and database schemas"
+    risk_factors: "breaking changes and data loss"
+    task_list:
+      - "Review API endpoint changes"
+      - "Validate data transformations"
+      - "Test error handling paths"
+    expected_outputs: "Working API changes with proper error handling"
+    
+  Tests:
+    primary_focus: "test coverage and validation"
+    file_focus: "test cases and validation logic"
+    constraints: "comprehensive coverage and test reliability"
+    existing_systems: "CI/CD pipelines and test infrastructure"
+    risk_factors: "test flakiness and coverage gaps"
+    task_list:
+      - "Review test coverage for new changes"
+      - "Validate test reliability"
+      - "Check CI/CD pipeline impact"
+    expected_outputs: "Comprehensive test suite with reliable coverage"
+    
+  default:
+    primary_focus: "feature development and bug fixes"
+    file_focus: "code changes and logic updates"
+    constraints: "code quality and maintainability"
+    existing_systems: "current codebase and architecture"
+    risk_factors: "regressions and technical debt"
+    task_list:
+      - "Review code changes for quality"
+      - "Test functionality thoroughly"
+      - "Consider impact on existing features"
+    expected_outputs: "Working feature implementation with proper testing"
+
+# Goal-specific enhancements
+goal_modifiers:
+  auth|security:
+    risk_factors_append: " and security vulnerabilities"
+    constraints_append: " and security best practices"
+  performance|optimization:
+    risk_factors_append: " and performance degradation"
+    expected_outputs_append: " with performance benchmarks"
+  bug|fix:
+    primary_focus_override: "fixing: {goal}"
+    task_list_override:
+      - "Identify root cause of the issue"
+      - "Implement targeted fix"
+      - "Add regression tests"

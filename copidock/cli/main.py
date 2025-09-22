@@ -80,6 +80,7 @@ def snapshot_cmd(
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
+    persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
 ):
     """Snapshot management"""
     if action != "create":
@@ -118,7 +119,7 @@ def snapshot_cmd(
                 raise typer.Exit(0)
             
             # Generate synthesis sections
-            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root))
+            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root),persona)
             
             # Create inline sources
             inline_sources = []
