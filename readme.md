@@ -122,3 +122,33 @@ Instead of losing context when you switch tasks, Copidock creates **decision thr
 - Rehydratable snapshots for continuation
 
 When you return to a thread, the AI can instantly reconstruct your mental model from the snapshot.
+
+# Copidock CLI Documentation
+
+## Thread Management Commands
+
+The `thread` command is your entry point into Copidock's intelligent development workflow. It creates and manages **decision threads** - persistent contexts that capture your development goals and reasoning.
+
+### Command Structure
+
+```bash
+python -m copidock.cli.main thread [OPTIONS] ACTION [GOAL]
+```
+
+### Arguments
+
+| Argument | Type | Description | Required |
+|----------|------|-------------|----------|
+| `action` | TEXT | The thread action to perform. Currently supports: `start` | ✅ Required |
+| `goal` | TEXT | Your development objective or task description | Optional |
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--repo` | TEXT | (auto-detected) | Repository name for context |
+| `--branch` | TEXT | `main` | Git branch you're working on |
+| `--profile` | TEXT | `default` | Configuration profile from `config.toml` |
+| `--api` | TEXT | (from config) | Override API base URL |
+| `--json` | flag | `false` | Output results in JSON format |
+| `--help` | flag | - | Show command help and exit |

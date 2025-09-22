@@ -25,3 +25,16 @@ Start lightweight with a VS Code extension that just surfaces:
 “Snapshot current context”
 
 For now, it can just shell out to the CLI or hit your API.
+
+22.9.2025
+The Issue: Rehydration Display
+You're absolutely right! The rehydrate command doesn't know how to display the comprehensive synthesis sections. It's only showing the old basic format.
+
+The Solution
+Your template system is generating perfect content but it's stored in the synthesis sections that the basic rehydrate command doesn't know how to display.
+
+You need to either:
+
+Update the rehydrate command to display comprehensive synthesis sections
+Use the debug output (which shows the template content perfectly)
+Create a new command like copidock rehydrate comprehensive

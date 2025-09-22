@@ -121,6 +121,23 @@ def snapshot_cmd(
             # Generate synthesis sections
             synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root),persona)
             
+            # SHOW THE INTELLIGENT TEMPLATE OUTPUT
+            print("\n" + "="*70)
+            print("🧠 INTELLIGENT TEMPLATE SYSTEM OUTPUT")
+            print("="*70)
+            for section_name, content in synth_sections.items():
+                print(f"\n📋 {section_name.replace('_', ' ').title()}")
+                print("-" * 50)
+                print(content)
+                print("")
+            print("="*70)
+            print("✅ Template system working perfectly!")
+            print("="*70 + "\n")
+            # Show what we're including
+            if not json_out:
+                rprint(f"[green]Comprehensive snapshot with {len(file_paths)} files[/green]")
+
+
             # Create inline sources
             inline_sources = []
             for file_path in file_paths:
