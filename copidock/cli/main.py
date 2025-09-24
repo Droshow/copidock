@@ -1,8 +1,9 @@
 import typer
-from typing import Optional
+from typing import Optional, Dict
 from rich import print as rprint
 from pathlib import Path
 
+from ..templates.loader import template_loader
 from .commands.thread import thread_start
 from .api import CopidockAPI, resolve_api
 from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
@@ -20,6 +21,7 @@ def thread_cmd(
     goal: Optional[str] = typer.Argument(None, help="Thread goal"),
     repo: Optional[str] = typer.Option(None, "--repo", help="Repository name"),
     branch: str = typer.Option("main", "--branch", help="Branch name"),
+    persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
@@ -70,6 +72,11 @@ def note_cmd(
     except Exception as e:
         rprint(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
+    
+def get_persona_specific_options(persona: str) -> Dict:
+    """Load persona-specific CLI options dynamically"""
+    persona_config = template_loader.load_persona(persona)
+    return persona_config.get('cli_parameters', {})
 
 @app.command("snapshot")
 def snapshot_cmd(
@@ -77,10 +84,21 @@ def snapshot_cmd(
     message: Optional[str] = typer.Option("", "--message", help="Snapshot message"),
     auto: bool = typer.Option(False, "--auto", help="Auto-gather git changes"),
     comprehensive: bool = typer.Option(False, "--comprehensive", help="Generate comprehensive rehydration"),
+    
+    # Enhanced intelligence parameters
+    persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
+    focus: Optional[str] = typer.Option(None, "--focus", help="What you're working on (e.g., 'API debugging', 'Infrastructure deployment')"),
+    output: Optional[str] = typer.Option(None, "--output", help="Expected deliverable (e.g., 'Working auth endpoint', 'Deployment plan')"),
+    constraints: Optional[str] = typer.Option(None, "--constraints", help="Limitations or requirements (e.g., 'backward compatibility', 'Q4 deadline')"),
+    
+    # Interactive and intelligence modes
+    interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
+    auto_detect: bool = typer.Option(True, "--auto-detect", help="Auto-detect context from git and files"),
+    
+    # Existing parameters
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
-    persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
 ):
     """Snapshot management"""
     if action != "create":
@@ -118,12 +136,22 @@ def snapshot_cmd(
                 rprint("[yellow]No relevant files found for comprehensive snapshot[/yellow]")
                 raise typer.Exit(0)
             
+            # Assign enhanced context variables from function arguments
+            final_focus = focus
+            final_output = output
+            final_constraints = constraints
+
+            enhanced_context = {
+                'focus': final_focus,
+                'output': final_output, 
+                'constraints': final_constraints,
+            }          
             # Generate synthesis sections
-            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root),persona)
+            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root), persona, enhanced_context)
             
             # SHOW THE INTELLIGENT TEMPLATE OUTPUT
             print("\n" + "="*70)
-            print("🧠 INTELLIGENT TEMPLATE SYSTEM OUTPUT")
+            print("INTELLIGENT TEMPLATE SYSTEM OUTPUT")
             print("="*70)
             for section_name, content in synth_sections.items():
                 print(f"\n📋 {section_name.replace('_', ' ').title()}")

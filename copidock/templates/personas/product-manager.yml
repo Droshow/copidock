@@ -1,1 +1,18 @@
-derive_template_vars
+derive_template_varsname: "Product Manager"
+description: "Non-technical PM focused on requirements and stakeholder alignment"
+
+# PM-specific CLI parameters
+cli_parameters:
+  stakeholders: "Who needs to be aligned?"
+  timeline: "When is this needed?"
+  success_metrics: "How do we measure success?"
+
+template_rules:
+  default:
+    primary_focus: "stakeholder alignment and requirement gathering"
+    file_focus: "specification documents and user stories"
+    task_list:
+      - "Define clear acceptance criteria"
+      - "Identify technical dependencies"
+      - "Plan stakeholder communication"
+    expected_outputs: "Detailed technical specification"

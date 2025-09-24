@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from ..templates.loader import template_loader
 
@@ -37,22 +37,41 @@ def categorize_files(file_paths: List[str]) -> Dict[str, List[str]]:
     return {k: v for k, v in categories.items() if v}
 
 def derive_template_vars(thread_data: Dict[str, Any], file_categories: Dict[str, List[str]], 
-                        persona: str = "senior-backend-dev") -> Dict[str, Any]:
+                        persona: str = "senior-backend-dev", enhanced_context: Optional[Dict] = None) -> Dict[str, Any]:
     """Derive template variables using persona templates"""
-    return template_loader.resolve_template_vars(persona, thread_data, file_categories)
+
+    return template_loader.resolve_template_vars(persona, thread_data, file_categories, enhanced_context)
 
 def synthesize_operator_instructions(thread_data: Dict[str, Any], file_categories: Dict[str, List[str]], 
-                                   persona: str = "senior-backend-dev") -> str:
+                                   persona: str = "senior-backend-dev", enhanced_context: Optional[Dict] = None) -> str:
     """Generate operator instructions using persona templates"""
-    template_vars = derive_template_vars(thread_data, file_categories, persona)
-    
+
+    if enhanced_context is None:
+        enhanced_context = {}
+
+    # Initialize template_vars
+    template_vars = derive_template_vars(thread_data, [], [], "", persona, enhanced_context) 
+
+    # Extract enhanced parameters
+    user_focus = enhanced_context.get('focus')
+    user_output = enhanced_context.get('output') 
+    user_constraints = enhanced_context.get('constraints')
+
+    # Add enhanced context to template vars
+    if user_focus:
+        template_vars['primary_focus'] = user_focus
+    if user_output:
+        template_vars['expected_outputs'] = user_output
+    if user_constraints:
+        template_vars['constraints'] = user_constraints
+
     # Add complexity detection
     category_count = len([cat for cat, files in file_categories.items() if files])
     if category_count > 2:
         template_vars['complexity_note'] = "\n\n**Multi-area changes detected** - review cross-component impacts carefully."
     else:
         template_vars['complexity_note'] = ""
-    
+
     # Template rendering using the persona system
     template = """## Operator Instructions
 
@@ -405,18 +424,27 @@ def synthesize_decisions_constraints(thread_data: Dict[str, Any], file_categorie
 
 def generate_comprehensive_snapshot(thread_data: Dict[str, Any], file_paths: List[str], 
                                   recent_commits: List[Dict[str, Any]], repo_root: str,
-                                  persona: str = "senior-backend-dev") -> Dict[str, str]:
-    """Generate all synthesis sections using persona templates"""
+                                  persona: str = "senior-backend-dev",
+                                  enhanced_context: Optional[Dict] = None) -> Dict[str, str]:
     
+    """Generate all synthesis sections using persona templates"""
+    # Handle enhanced context safely
+    if enhanced_context is None:
+        enhanced_context = {}
+    
+    # Load template with enhanced context
+    template_vars = derive_template_vars(
+        thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context
+    )
     # Categorize files
     file_categories = categorize_files(file_paths)
     
     # Generate all sections
     sections = {
-        'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona),
-        'current_state': synthesize_current_state(recent_commits, file_categories),
-        'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
-        'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
-    }
+    'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona, enhanced_context),
+    'current_state': synthesize_current_state(recent_commits, file_categories),
+    'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
+    'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
+}
     
     return sections
