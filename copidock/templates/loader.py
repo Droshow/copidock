@@ -41,10 +41,14 @@ class TemplateLoader:
         return persona_config
     
     def resolve_template_vars(self, persona_name: str, thread_data: Dict[str, Any], 
-                             file_categories: Dict[str, List[str]]) -> Dict[str, Any]:
+                         file_categories: Dict[str, List[str]], enhanced_context: Optional[Dict] = None) -> Dict[str, Any]:
         """Resolve template variables using persona rules"""
         persona = self.load_persona(persona_name)
         goal = thread_data.get('goal', 'development task')
+        
+        # Handle enhanced context safely
+        if enhanced_context is None:
+            enhanced_context = {}
         
         # Base template vars
         template_vars = {
@@ -76,32 +80,40 @@ class TemplateLoader:
         # Apply goal-specific modifiers
         self._apply_goal_modifiers(template_vars, persona, goal)
         
+        # **NEW: Apply enhanced context overrides**
+        if enhanced_context.get('focus'):
+            template_vars['primary_focus'] = enhanced_context['focus']
+        if enhanced_context.get('output'):
+            template_vars['expected_outputs'] = enhanced_context['output']
+        if enhanced_context.get('constraints'):
+            template_vars['constraints'] = enhanced_context['constraints']
+        
         # Handle task_list formatting
         if isinstance(template_vars.get('task_list'), list):
             template_vars['task_list'] = '\n'.join(f"- {task}" for task in template_vars['task_list'])
         
         return template_vars
-    
+            
     def _apply_goal_modifiers(self, template_vars: Dict[str, Any], persona: Dict[str, Any], goal: str):
-        """Apply goal-specific modifiers to template variables"""
-        goal_modifiers = persona.get('goal_modifiers', {})
-        goal_lower = goal.lower()
-        
-        for pattern, modifiers in goal_modifiers.items():
-            if any(keyword in goal_lower for keyword in pattern.split('|')):
-                for key, value in modifiers.items():
-                    if key.endswith('_append'):
-                        base_key = key.replace('_append', '')
-                        if base_key in template_vars:
-                            if isinstance(template_vars[base_key], str):
-                                template_vars[base_key] += value
-                            elif isinstance(template_vars[base_key], list) and isinstance(value, list):
-                                template_vars[base_key].extend(value)
-                    elif key.endswith('_override'):
-                        base_key = key.replace('_override', '')
-                        template_vars[base_key] = value
-                    else:
-                        template_vars[key] = value
+            """Apply goal-specific modifiers to template variables"""
+            goal_modifiers = persona.get('goal_modifiers', {})
+            goal_lower = goal.lower()
+            
+            for pattern, modifiers in goal_modifiers.items():
+                if any(keyword in goal_lower for keyword in pattern.split('|')):
+                    for key, value in modifiers.items():
+                        if key.endswith('_append'):
+                            base_key = key.replace('_append', '')
+                            if base_key in template_vars:
+                                if isinstance(template_vars[base_key], str):
+                                    template_vars[base_key] += value
+                                elif isinstance(template_vars[base_key], list) and isinstance(value, list):
+                                    template_vars[base_key].extend(value)
+                        elif key.endswith('_override'):
+                            base_key = key.replace('_override', '')
+                            template_vars[base_key] = value
+                        else:
+                            template_vars[key] = value
 
 # Global instance
 template_loader = TemplateLoader()

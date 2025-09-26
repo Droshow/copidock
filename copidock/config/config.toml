@@ -1,7 +1,7 @@
 [default]
-api_base = "https://y0jnzgvb1f.execute-api.eu-central-1.amazonaws.com"
+api_base = "https://dk7t8ck42d.execute-api.eu-central-1.amazonaws.com"
 # api_key = "optional-bearer-token"
 timeout_secs = 15
 
 [work]  # example of another profile
-api_base = "https://y0jnzgvb1f.execute-api.eu-central-1.amazonaws.com"
+api_base = "https://dk7t8ck42d.execute-api.eu-central-1.amazonaws.com"

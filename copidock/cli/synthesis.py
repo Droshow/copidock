@@ -50,7 +50,7 @@ def synthesize_operator_instructions(thread_data: Dict[str, Any], file_categorie
         enhanced_context = {}
 
     # Initialize template_vars
-    template_vars = derive_template_vars(thread_data, [], [], "", persona, enhanced_context) 
+    template_vars = derive_template_vars(thread_data, file_categories, persona, enhanced_context) 
 
     # Extract enhanced parameters
     user_focus = enhanced_context.get('focus')
@@ -64,6 +64,13 @@ def synthesize_operator_instructions(thread_data: Dict[str, Any], file_categorie
         template_vars['expected_outputs'] = user_output
     if user_constraints:
         template_vars['constraints'] = user_constraints
+    
+    template_vars['existing_systems'] = template_vars.get('existing_systems', 'functionality')
+    template_vars['risk_factors'] = template_vars.get('risk_factors', 'potential issues')
+    template_vars['file_focus'] = template_vars.get('file_focus', 'relevant files')
+    template_vars['task_list'] = template_vars.get('task_list', '- Review and implement changes\n- Test functionality\n- Update documentation')
+
+
 
     # Add complexity detection
     category_count = len([cat for cat, files in file_categories.items() if files])
@@ -71,7 +78,9 @@ def synthesize_operator_instructions(thread_data: Dict[str, Any], file_categorie
         template_vars['complexity_note'] = "\n\n**Multi-area changes detected** - review cross-component impacts carefully."
     else:
         template_vars['complexity_note'] = ""
-
+    # Debug: Print template_vars to see what's available
+    print(f"DEBUG: Template vars keys: {list(template_vars.keys())}")
+    
     # Template rendering using the persona system
     template = """## Operator Instructions
 
@@ -433,9 +442,7 @@ def generate_comprehensive_snapshot(thread_data: Dict[str, Any], file_paths: Lis
         enhanced_context = {}
     
     # Load template with enhanced context
-    template_vars = derive_template_vars(
-        thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context
-    )
+
     # Categorize files
     file_categories = categorize_files(file_paths)
     

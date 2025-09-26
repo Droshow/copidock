@@ -114,3 +114,39 @@ class CopidockAPI:
         )
         response.raise_for_status()
         return response.json()
+    # In your api.py file, add this method to the CopidockAPI class:
+
+    def hydrate_snapshot(self, thread_id: str, markdown_content: str, metadata: dict) -> dict:
+        """Save comprehensive snapshot markdown to S3 for rehydration"""
+        url = f"{self.api_base}/snapshots/{thread_id}/hydrate"
+        
+        payload = {
+            "markdown_content": markdown_content,
+            "metadata": metadata
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+        
+        if response.status_code != 200:
+            raise Exception(f"API error: {response.status_code} - {response.text}")
+        
+        return response.json()
+
+    def rehydrate_from_markdown(self, rehydration_id: str) -> dict:
+        """Retrieve comprehensive snapshot markdown from S3"""
+        url = f"{self.api_base}/snapshots/rehydrate/{rehydration_id}"
+        
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        response = requests.get(url, headers=headers, timeout=self.timeout)
+        
+        if response.status_code != 200:
+            raise Exception(f"API error: {response.status_code} - {response.text}")
+        
+        return response.json()
