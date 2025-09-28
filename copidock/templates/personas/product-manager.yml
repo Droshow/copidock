@@ -1,4 +1,4 @@
-derive_template_varsname: "Product Manager"
+name: "Product Manager"
 description: "Non-technical PM focused on requirements and stakeholder alignment"
 
 # PM-specific CLI parameters
@@ -11,8 +11,23 @@ template_rules:
   default:
     primary_focus: "stakeholder alignment and requirement gathering"
     file_focus: "specification documents and user stories"
+    constraints: "timeline and resource limitations"           # ADD THIS
+    existing_systems: "current product features and workflows" # ADD THIS  
+    risk_factors: "scope creep and stakeholder misalignment"   # ADD THIS
     task_list:
       - "Define clear acceptance criteria"
       - "Identify technical dependencies"
       - "Plan stakeholder communication"
     expected_outputs: "Detailed technical specification"
+
+  Configuration:
+    primary_focus: "tool adoption and team change management"
+    file_focus: "configuration and setup files"
+    constraints: "team resistance and learning curve"
+    existing_systems: "current team tools and processes"
+    risk_factors: "tool adoption failure and team pushback"
+    task_list:
+      - "Address team concerns about new tools"
+      - "Plan gradual adoption strategy" 
+      - "Define success metrics for tool adoption"
+    expected_outputs: "Smooth tool transition with team buy-in"

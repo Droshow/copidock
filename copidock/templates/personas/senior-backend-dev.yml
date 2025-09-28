@@ -1,68 +1,131 @@
-# copidock/templates/personas/senior-backend-dev.yml
 name: "Senior Backend Developer"
-description: "Experienced backend developer working on APIs, databases, and infrastructure"
+description: "Experienced software engineer focused on robust, scalable backend systems"
 
-# Template selection rules based on file categories
+# Enhanced SE scaffolding template rules
 template_rules:
   Infrastructure:
-    primary_focus: "infrastructure and deployment"
-    file_focus: "Terraform and configuration files"
-    constraints: "production stability and rollback plans"
-    existing_systems: "running services and dependent infrastructure"
-    risk_factors: "service outages and deployment failures"
+    primary_focus: "infrastructure design and deployment reliability"
+    file_focus: "Terraform, Docker, and deployment configurations"
+    constraints: "production stability, rollback capability, and resource limits"
+    existing_systems: "running services, databases, and dependent infrastructure"
+    risk_factors: "service outages, resource exhaustion, and deployment failures"
     task_list:
-      - "Review infrastructure changes for breaking changes"
-      - "Validate resource dependencies"
-      - "Plan deployment sequence"
-    expected_outputs: "Tested infrastructure changes with deployment plan"
+      - "Review infrastructure changes for breaking dependencies"
+      - "Validate resource scaling and limits"
+      - "Design rollback strategy"
+      - "Plan blue-green or canary deployment"
+      - "Document deployment sequence and dependencies"
+    expected_outputs: "Production-ready infrastructure with documented deployment plan"
     
   Backend/Lambda:
-    primary_focus: "backend API development"
-    file_focus: "Lambda functions and API logic"
-    constraints: "backward compatibility and data integrity"
-    existing_systems: "API contracts and database schemas"
-    risk_factors: "breaking changes and data loss"
+    primary_focus: "API design, data flow, and system integration"
+    file_focus: "Lambda functions, API handlers, and business logic"
+    constraints: "backward compatibility, data consistency, and API contracts"
+    existing_systems: "database schemas, API contracts, and downstream services"
+    risk_factors: "breaking changes, data corruption, and service degradation"
     task_list:
-      - "Review API endpoint changes"
-      - "Validate data transformations"
-      - "Test error handling paths"
-    expected_outputs: "Working API changes with proper error handling"
+      - "Design API contract and validate backward compatibility"
+      - "Implement comprehensive error handling and logging"
+      - "Add input validation and sanitization"
+      - "Design database migration strategy if needed"
+      - "Plan monitoring and alerting for new endpoints"
+      - "Write integration tests for API flows"
+    expected_outputs: "Robust API implementation with comprehensive error handling and tests"
     
   Tests:
-    primary_focus: "test coverage and validation"
-    file_focus: "test cases and validation logic"
-    constraints: "comprehensive coverage and test reliability"
-    existing_systems: "CI/CD pipelines and test infrastructure"
-    risk_factors: "test flakiness and coverage gaps"
+    primary_focus: "test architecture and quality assurance strategy"
+    file_focus: "unit tests, integration tests, and test infrastructure"
+    constraints: "test reliability, coverage thresholds, and CI/CD integration"
+    existing_systems: "testing frameworks, CI/CD pipelines, and test environments"
+    risk_factors: "test flakiness, coverage gaps, and false positives/negatives"
     task_list:
-      - "Review test coverage for new changes"
-      - "Validate test reliability"
-      - "Check CI/CD pipeline impact"
-    expected_outputs: "Comprehensive test suite with reliable coverage"
+      - "Design test pyramid strategy (unit, integration, e2e)"
+      - "Implement test doubles and mocks for external dependencies"
+      - "Add performance and load testing for critical paths"
+      - "Set up test data management and cleanup"
+      - "Configure test reporting and coverage tracking"
+    expected_outputs: "Comprehensive test suite with reliable coverage and clear reporting"
+    
+  Database:
+    primary_focus: "data modeling, performance, and consistency"
+    file_focus: "database schemas, migrations, and query optimization"
+    constraints: "data integrity, query performance, and migration safety"
+    existing_systems: "current schemas, indexes, and data relationships"
+    risk_factors: "data loss, performance degradation, and migration failures"
+    task_list:
+      - "Design data model and validate relationships"
+      - "Plan migration strategy with rollback capability"
+      - "Optimize queries and add appropriate indexes"
+      - "Implement data validation and constraints"
+      - "Plan backup and recovery procedures"
+    expected_outputs: "Optimized data layer with safe migration and backup strategy"
+    
+  Configuration:
+    primary_focus: "system configuration and environment management"
+    file_focus: "config files, environment variables, and settings"
+    constraints: "security, maintainability, and environment parity"
+    existing_systems: "configuration management and secret storage"
+    risk_factors: "configuration drift, secret exposure, and environment inconsistencies"
+    task_list:
+      - "Design configuration hierarchy and validation"
+      - "Implement secure secret management"
+      - "Add configuration testing and validation"
+      - "Document configuration dependencies"
+      - "Plan configuration deployment and rollback"
+    expected_outputs: "Secure, validated configuration management system"
     
   default:
-    primary_focus: "feature development and bug fixes"
-    file_focus: "code changes and logic updates"
-    constraints: "code quality and maintainability"
-    existing_systems: "current codebase and architecture"
-    risk_factors: "regressions and technical debt"
+    primary_focus: "software engineering best practices and system design"
+    file_focus: "core application logic and system components"
+    constraints: "code quality, maintainability, and system performance"
+    existing_systems: "current architecture, patterns, and coding standards"
+    risk_factors: "technical debt, performance bottlenecks, and maintainability issues"
     task_list:
-      - "Review code changes for quality"
-      - "Test functionality thoroughly"
-      - "Consider impact on existing features"
-    expected_outputs: "Working feature implementation with proper testing"
+      - "Design system architecture and component interactions"
+      - "Implement SOLID principles and design patterns"
+      - "Add comprehensive logging and error handling"
+      - "Design performance monitoring and optimization"
+      - "Plan scalability and load handling"
+      - "Document architectural decisions (ADRs)"
+    expected_outputs: "Well-architected, maintainable system with comprehensive documentation"
 
-# Goal-specific enhancements
+# SE-specific goal modifiers
 goal_modifiers:
-  auth|security:
+  api|endpoint:
+    primary_focus_override: "API design and implementation: {goal}"
+    task_list_override:
+      - "Design RESTful API contract with OpenAPI spec"
+      - "Implement request/response validation"
+      - "Add comprehensive error handling with proper HTTP codes"
+      - "Design rate limiting and authentication"
+      - "Write API integration tests"
+      - "Plan API versioning strategy"
+    expected_outputs: "Production-ready API with comprehensive documentation and tests"
+    
+  performance|optimization:
+    constraints_append: " and performance benchmarks"
+    task_list_append:
+      - "Profile current performance bottlenecks"
+      - "Design caching strategy"
+      - "Implement database query optimization"
+      - "Add performance monitoring and alerting"
+    expected_outputs_append: " with measurable performance improvements"
+    
+  security|auth:
     risk_factors_append: " and security vulnerabilities"
     constraints_append: " and security best practices"
-  performance|optimization:
-    risk_factors_append: " and performance degradation"
-    expected_outputs_append: " with performance benchmarks"
+    task_list_append:
+      - "Conduct threat modeling and security review"
+      - "Implement authentication and authorization"
+      - "Add input validation and SQL injection prevention"
+      - "Plan security monitoring and incident response"
+    
   bug|fix:
-    primary_focus_override: "fixing: {goal}"
+    primary_focus_override: "root cause analysis and systematic fix: {goal}"
     task_list_override:
-      - "Identify root cause of the issue"
-      - "Implement targeted fix"
-      - "Add regression tests"
+      - "Reproduce issue in controlled environment"
+      - "Identify root cause through debugging and profiling"
+      - "Design minimal, targeted fix"
+      - "Add regression tests to prevent recurrence"
+      - "Plan deployment and rollback strategy"
+      - "Document issue resolution for knowledge base"

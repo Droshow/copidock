@@ -36,6 +36,27 @@ locals {
       lambda_key  = "snapshot" # Same lambda as regular snapshot
       description = "CORS preflight for comprehensive snapshots"
     }
+    # ADD THESE NEW HYDRATION ROUTES
+    post_snapshots_hydrate = {
+      route_key   = "POST /snapshots/{thread_id}/hydrate"
+      lambda_key  = "hydrate"
+      description = "Save comprehensive snapshot markdown to S3 for rehydration"
+    }
+    options_snapshots_hydrate = {
+      route_key   = "OPTIONS /snapshots/{thread_id}/hydrate"
+      lambda_key  = "hydrate"
+      description = "CORS preflight for hydration"
+    }
+    get_snapshots_rehydrate = {
+      route_key   = "GET /snapshots/rehydrate/{rehydration_id}"
+      lambda_key  = "rehydrate" # Uses existing rehydrate handler
+      description = "Retrieve comprehensive snapshot markdown from S3"
+    }
+    options_snapshots_rehydrate = {
+      route_key   = "OPTIONS /snapshots/rehydrate/{rehydration_id}"
+      lambda_key  = "rehydrate"
+      description = "CORS preflight for rehydrate by ID"
+    }
   }
 }
 

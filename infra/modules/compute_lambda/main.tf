@@ -20,6 +20,11 @@ locals {
       timeout     = 10
       description = "Rehydrate thread context from snapshots"
     }
+    hydrate = {
+      handler     = "hydrate_handler.handler"
+      timeout     = 30
+      description = "Hydrate thread context with AI synthesis"
+    }
   }
 }
 

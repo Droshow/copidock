@@ -125,11 +125,7 @@ class CopidockAPI:
             "metadata": metadata
         }
         
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        response = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
+        response = requests.post(url, json=payload, headers=self._headers(), timeout=self.timeout)
         
         if response.status_code != 200:
             raise Exception(f"API error: {response.status_code} - {response.text}")
@@ -139,14 +135,10 @@ class CopidockAPI:
     def rehydrate_from_markdown(self, rehydration_id: str) -> dict:
         """Retrieve comprehensive snapshot markdown from S3"""
         url = f"{self.api_base}/snapshots/rehydrate/{rehydration_id}"
-        
-        headers = {}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        response = requests.get(url, headers=headers, timeout=self.timeout)
-        
+
+        response = requests.get(url, headers=self._headers(), timeout=self.timeout)
+
         if response.status_code != 200:
             raise Exception(f"API error: {response.status_code} - {response.text}")
-        
+
         return response.json()
