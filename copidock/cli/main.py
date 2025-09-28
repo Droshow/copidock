@@ -1,8 +1,9 @@
 import typer
+import json
 from typing import Optional, Dict
 from rich import print as rprint
 from pathlib import Path
-from datetime import datetime  # ADD THIS LINE
+from datetime import datetime
 
 from ..templates.loader import template_loader
 from .commands.thread import thread_start
@@ -318,51 +319,85 @@ def rehydrate_cmd(
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
+    save_local: bool = typer.Option(True, "--save-local/--no-save-local", help="Save to local rehydrations folder"),
 ):
     """Rehydrate from comprehensive markdown snapshot"""
     if action != "restore":
-        rprint("[red]Only 'restore' action supported[/red]")
+        rprint("[red]Error: Only 'restore' action is supported[/red]")
         raise typer.Exit(1)
     
     if not rehydration_id:
-        rprint("[red]Rehydration ID is required[/red]")
+        rprint("[red]Error: rehydration_id is required[/red]")
         raise typer.Exit(1)
     
     repo_root = find_repo_root()
-    
     api_base, api_key, timeout = resolve_api(profile, api)
     client = CopidockAPI(api_base, api_key, timeout)
     
     try:
-        # Get the markdown content from S3
+        # Get the rehydration data from API
         rehydration_data = client.rehydrate_from_markdown(rehydration_id)
         
-        # Update local state
+        # Extract the markdown content and metadata
+        markdown_content = rehydration_data.get('markdown_content', '')
+        metadata = rehydration_data.get('metadata', {})
+        
+        # Create local rehydrations directory
+        rehydrations_dir = Path('copidock/rehydrations')
+        rehydrations_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate filename with timestamp from metadata or current time
+        timestamp = metadata.get('created_at', datetime.now().strftime('%Y%m%d-%H%M%S'))
+        if 'T' in timestamp:  # Convert ISO format to simple format
+            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).strftime('%Y%m%d-%H%M%S')
+        
+        filename = f"{rehydration_id}-{timestamp}.md"
+        file_path = rehydrations_dir / filename
+        
+        # Save the markdown content locally
+        if save_local:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(markdown_content)
+            
+            rprint(f"[green]✅ Rehydration saved to: {file_path}[/green]")
+        
+        # Update local state with rehydrated context
         state = load_state(repo_root)
         state["thread_id"] = rehydration_data.get("thread_id", "")
         state["goal"] = rehydration_data.get("goal", "")
         state["persona"] = rehydration_data.get("persona", "senior-backend-dev")
         save_state(repo_root, state)
         
-        if json_out:
-            rprint(rehydration_data)
+        # Display context information
+        thread_id = rehydration_data.get('thread_id', 'Unknown')
+        goal = rehydration_data.get('goal', '')
+        focus = metadata.get('focus', '')
+        
+        rprint(f"[blue]Context rehydrated from comprehensive snapshot[/blue]")
+        rprint(f"[blue]Thread ID: {thread_id}[/blue]")
+        rprint(f"[blue]Goal: {goal}[/blue]") 
+        rprint(f"[blue]Focus: {focus}[/blue]")
+        
+        if save_local:
+            rprint(f"[green]📁 File saved: ./copidock/rehydrations/{filename}[/green]")
+        
+        # Display the full content (or summary)
+        if not json_out:
+            rprint("\n" + "="*70)
+            rprint("REHYDRATED CONTEXT")
+            rprint("="*70)
+            rprint(markdown_content)
         else:
-            # Display the markdown content
-            markdown_content = rehydration_data.get("markdown_content", "")
-            rprint(f"[green]Context rehydrated from comprehensive snapshot[/green]")
-            rprint(f"[blue]Thread ID:[/blue] {rehydration_data.get('thread_id', 'N/A')}")
-            rprint(f"[blue]Goal:[/blue] {rehydration_data.get('goal', 'N/A')}")
-            rprint(f"[blue]Focus:[/blue] {rehydration_data.get('focus', 'N/A')}")
-            
-            # Show the markdown content
-            print("\n" + "="*70)
-            print("REHYDRATED CONTEXT")
-            print("="*70)
-            print(markdown_content)
-            print("="*70)
+            print(json.dumps({
+                'rehydration_id': rehydration_id,
+                'thread_id': thread_id,
+                'file_path': str(file_path) if save_local else None,
+                'metadata': metadata,
+                'markdown_content': markdown_content
+            }, indent=2))
             
     except Exception as e:
-        rprint(f"[red]Error rehydrating:[/red] {e}")
+        rprint(f"[red]Error rehydrating: {str(e)}[/red]")
         raise typer.Exit(1)
     
 if __name__ == "__main__":
