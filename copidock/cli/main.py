@@ -10,6 +10,10 @@ from .commands.thread import thread_start
 from .api import CopidockAPI, resolve_api
 from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
 
+# NEW: Import interactive functions
+from ..interactive.detection import auto_detect_context
+from ..interactive.flow import run_interactive_flow, confirm_snapshot_creation
+
 # ...rest of your code stays the same...
 
 # ^ if you keep config/ at repo root; make sure config/__init__.py exists
@@ -59,7 +63,7 @@ def thread_cmd(
     action: str = typer.Argument(..., help="Action: start"),
     goal: Optional[str] = typer.Argument(None, help="Thread goal"),
     repo: Optional[str] = typer.Option(None, "--repo", help="Repository name"),
-    branch: str = typer.Option("main", "--branch", help="Branch name"),
+    branch: Optional[str] = typer.Option(None, "--branch", help="Branch name"),
     persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
@@ -70,6 +74,16 @@ def thread_cmd(
         if not goal:
             rprint("[red]Goal is required for thread start[/red]")
             raise typer.Exit(1)
+        
+        # AUTO-DETECT git context if not provided
+        if not repo or not branch:
+            repo_root = find_repo_root()
+            context = auto_detect_context(repo_root)
+            
+            repo = repo or context.get('repo', 'unknown')
+            branch = branch or context.get('branch', 'main')
+            
+            rprint(f"[dim]Auto-detected: {repo} (branch: {branch})[/dim]")
         thread_start(goal, repo, branch, profile, api, json_out)
     else:
         rprint(f"[red]Unknown action: {action}[/red]")
@@ -121,6 +135,7 @@ def get_persona_specific_options(persona: str) -> Dict:
 def snapshot_cmd(
     action: str = typer.Argument(..., help="Action: create"),
     hydrate: bool = typer.Option(False, "--hydrate", help="Save comprehensive snapshot as markdown to S3"),
+    mode: str = typer.Option("auto", "--mode", help="Mode: auto, comprehensive, manual"),
     message: Optional[str] = typer.Option("", "--message", help="Snapshot message"),
     auto: bool = typer.Option(False, "--auto", help="Auto-gather git changes"),
     comprehensive: bool = typer.Option(False, "--comprehensive", help="Generate comprehensive rehydration"),
@@ -130,6 +145,8 @@ def snapshot_cmd(
     focus: Optional[str] = typer.Option(None, "--focus", help="What you're working on (e.g., 'API debugging', 'Infrastructure deployment')"),
     output: Optional[str] = typer.Option(None, "--output", help="Expected deliverable (e.g., 'Working auth endpoint', 'Deployment plan')"),
     constraints: Optional[str] = typer.Option(None, "--constraints", help="Limitations or requirements (e.g., 'backward compatibility', 'Q4 deadline')"),
+    since: Optional[str] = typer.Option(None, "--since", help="Git time range (e.g., '3 days')"),
+
     
     # Interactive and intelligence modes
     interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
@@ -155,6 +172,28 @@ def snapshot_cmd(
     
     api_base, api_key, timeout = resolve_api(profile, api)
     client = CopidockAPI(api_base, api_key, timeout)
+
+    # Interactive flow
+    if interactive:
+        rprint("[blue]🎯 Interactive Snapshot Creation[/blue]")
+        rprint()
+        
+        # Auto-detect context for smart defaults
+        context = auto_detect_context(repo_root, since)
+        
+        # Interactive prompting with smart defaults
+        interactive_params = run_interactive_flow(context, persona, focus, output, constraints)
+        
+        # Use interactive parameters
+        focus = interactive_params['focus']
+        output = interactive_params['output']
+        constraints = interactive_params['constraints']
+        persona = interactive_params['persona']
+        
+        # Show summary and confirm
+        if not confirm_snapshot_creation(interactive_params, context):
+            rprint("[yellow]Snapshot creation cancelled[/yellow]")
+            raise typer.Exit(0)
 
     # Handle comprehensive mode
     if comprehensive:
