@@ -2,6 +2,7 @@ import re
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from ..templates.loader import template_loader
+from rich import print as rprint
 
 def categorize_files(file_paths: List[str]) -> Dict[str, List[str]]:
     """Categorize files by type"""
@@ -431,27 +432,39 @@ def synthesize_decisions_constraints(thread_data: Dict[str, Any], file_categorie
 - **Budget**: Development/testing environment
 - **Timeline**: Iterative development with working increments"""
 
-def generate_comprehensive_snapshot(thread_data: Dict[str, Any], file_paths: List[str], 
-                                  recent_commits: List[Dict[str, Any]], repo_root: str,
-                                  persona: str = "senior-backend-dev",
-                                  enhanced_context: Optional[Dict] = None) -> Dict[str, str]:
-    
-    """Generate all synthesis sections using persona templates"""
+def generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context):
     # Handle enhanced context safely
     if enhanced_context is None:
         enhanced_context = {}
-    
-    # Load template with enhanced context
 
     # Categorize files
     file_categories = categorize_files(file_paths)
-    
+
+    # Create context for template loading
+    context = {
+        'repo_root': repo_root,
+        'file_categories': file_categories,
+        'thread_data': thread_data
+    }
+
+    # Get stage from enhanced context
+    stage = enhanced_context.get('stage', 'development')
+
+    # Use stage-aware template loading
+    try:
+        template_content = template_loader.load_template_with_stage(
+            persona, stage, context, enhanced_context
+        )
+        rprint(f"[dim]Loaded stage-specific template for {stage}[/dim]")
+    except Exception as e:
+        rprint(f"[dim]Using default template: {e}[/dim]")
+
     # Generate all sections
     sections = {
-    'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona, enhanced_context),
-    'current_state': synthesize_current_state(recent_commits, file_categories),
-    'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
-    'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
-}
-    
+        'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona, enhanced_context),
+        'current_state': synthesize_current_state(recent_commits, file_categories),
+        'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
+        'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
+    }
+
     return sections

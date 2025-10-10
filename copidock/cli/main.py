@@ -142,11 +142,12 @@ def snapshot_cmd(
     
     # Enhanced intelligence parameters
     persona: str = typer.Option("senior-backend-dev", "--persona", help="Template persona to use"),
-    focus: Optional[str] = typer.Option(None, "--focus", help="What you're working on (e.g., 'API debugging', 'Infrastructure deployment')"),
-    output: Optional[str] = typer.Option(None, "--output", help="Expected deliverable (e.g., 'Working auth endpoint', 'Deployment plan')"),
-    constraints: Optional[str] = typer.Option(None, "--constraints", help="Limitations or requirements (e.g., 'backward compatibility', 'Q4 deadline')"),
-    since: Optional[str] = typer.Option(None, "--since", help="Git time range (e.g., '3 days')"),
+    focus: Optional[str] = typer.Option(None, "--focus", help="What you're working on"),
+    output: Optional[str] = typer.Option(None, "--output", help="Expected deliverable"),
+    constraints: Optional[str] = typer.Option(None, "--constraints", help="Limitations or requirements"),
+    since: Optional[str] = typer.Option(None, "--since", help="Git time range"),
 
+    stage: str = typer.Option("auto", "--stage", help="Project stage: auto, initial, development, maintenance"),
     
     # Interactive and intelligence modes
     interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
@@ -156,13 +157,29 @@ def snapshot_cmd(
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
-):
-    """Snapshot management"""
+):  
+    """Create development snapshot with optional stage awareness"""
+
     if action != "create":
         rprint("[red]Only 'create' action supported[/red]")
         raise typer.Exit(1)
     
+    # Stage detection - ONLY ONE BLOCK
     repo_root = find_repo_root()
+    if stage == "auto":
+        context = auto_detect_context(repo_root)
+        
+        if any('README' in f.upper() for f in context.get('modified_files', [])):
+            detected_stage = "initial"
+            rprint(f"[dim]Auto-detected stage: {detected_stage} (README found in changes)[/dim]")
+        else:
+            detected_stage = "development"
+            rprint(f"[dim]Auto-detected stage: {detected_stage}[/dim]")
+    else:
+        detected_stage = stage
+        rprint(f"[dim]Using stage: {detected_stage}[/dim]")
+    
+    # Load state
     state = load_state(repo_root)
     thread_id = state.get("thread_id", "")
     
@@ -215,28 +232,31 @@ def snapshot_cmd(
                 rprint("[yellow]No relevant files found for comprehensive snapshot[/yellow]")
                 raise typer.Exit(0)
             
-            # Assign enhanced context variables from function arguments
-            final_focus = focus
-            final_output = output
-            final_constraints = constraints
-
+            # Create enhanced context with stage information
             enhanced_context = {
-                'focus': final_focus,
-                'output': final_output, 
-                'constraints': final_constraints,
+                'focus': focus,
+                'output': output, 
+                'constraints': constraints,
+                'stage': detected_stage,
             }          
+            
             # Generate synthesis sections
-            synth_sections = generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, str(repo_root), persona, enhanced_context)
+            synth_sections = generate_comprehensive_snapshot(
+                thread_data, file_paths, recent_commits, str(repo_root), persona, enhanced_context
+            )
             
             if hydrate:
-                # Import the function if defined elsewhere
-                markdown_content = create_rehydration_markdown(thread_data, synth_sections, file_paths, recent_commits, enhanced_context)
+                # Create rehydration markdown
+                markdown_content = create_rehydration_markdown(
+                    thread_data, synth_sections, file_paths, recent_commits, enhanced_context
+                )
 
                 hydrate_data = client.hydrate_snapshot(thread_id, markdown_content, {
                     'persona': persona,
-                    'focus': final_focus,
-                    'output': final_output,
-                    'constraints': final_constraints,
+                    'focus': focus,
+                    'output': output,
+                    'constraints': constraints,
+                    'stage': detected_stage,
                     'file_count': len(file_paths),
                     'commit_count': len(recent_commits)
                 })
@@ -244,22 +264,19 @@ def snapshot_cmd(
                 if not json_out:
                     rprint(f"[green]Snapshot hydrated to S3[/green]: {hydrate_data['rehydration_id']}")
                     rprint(f"[dim]Markdown saved for future rehydration[/dim]")
+            
             # SHOW THE INTELLIGENT TEMPLATE OUTPUT
             print("\n" + "="*70)
             print("INTELLIGENT TEMPLATE SYSTEM OUTPUT")
             print("="*70)
             for section_name, content in synth_sections.items():
-                print(f"\n📋 {section_name.replace('_', ' ').title()}")
+                print(f"\n {section_name.replace('_', ' ').title()}")
                 print("-" * 50)
                 print(content)
                 print("")
             print("="*70)
-            print("✅ Template system working perfectly!")
+            print("Template system working perfectly!")
             print("="*70 + "\n")
-            # Show what we're including
-            if not json_out:
-                rprint(f"[green]Comprehensive snapshot with {len(file_paths)} files[/green]")
-
 
             # Create inline sources
             inline_sources = []
@@ -350,7 +367,8 @@ def snapshot_cmd(
         except Exception as e:
             rprint(f"[red]Error:[/red] {e}")
             raise typer.Exit(1)
-    
+
+
 @app.command("rehydrate")
 def rehydrate_cmd(
     action: str = typer.Argument(..., help="Action: restore"),

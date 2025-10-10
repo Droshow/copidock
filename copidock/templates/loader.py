@@ -114,6 +114,42 @@ class TemplateLoader:
                             template_vars[base_key] = value
                         else:
                             template_vars[key] = value
+    # In copidock/templates/loader.py
+
+    def load_template_with_stage(self, persona: str, stage: str, context: Dict, enhanced_context: Dict) -> str:
+        """Load template variant based on project stage"""
+        
+        # Try stage-specific template first
+        stage_specific_persona = f"{persona}-{stage}"
+        
+        try:
+            return self.load_template(stage_specific_persona, context, enhanced_context)
+        except:
+            # Fallback to default template - no error message for now
+            return self.load_template(persona, context, enhanced_context)
+    
+    def load_template(self, persona: str, context: Dict, enhanced_context: Dict) -> str:
+        """Load and render template - simplified for now"""
+        
+        # For now, return a simple stage-aware template
+        stage = enhanced_context.get('stage', 'development')
+        focus = enhanced_context.get('focus', 'development tasks')
+        
+        if stage == "initial":
+            return f"""## Stage: {stage.upper()}
+Focus: {focus}
+This is initial stage guidance - architecture and setup focus.
+"""
+        elif stage == "maintenance":
+            return f"""## Stage: {stage.upper()}
+Focus: {focus}
+This is maintenance stage guidance - stability and risk management focus.
+"""
+        else:
+            return f"""## Stage: {stage.upper()}
+Focus: {focus}
+This is development stage guidance - feature development focus.
+"""
 
 # Global instance
 template_loader = TemplateLoader()
