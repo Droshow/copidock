@@ -71,16 +71,12 @@ def synthesize_operator_instructions(thread_data: Dict[str, Any], file_categorie
     template_vars['file_focus'] = template_vars.get('file_focus', 'relevant files')
     template_vars['task_list'] = template_vars.get('task_list', '- Review and implement changes\n- Test functionality\n- Update documentation')
 
-
-
     # Add complexity detection
     category_count = len([cat for cat, files in file_categories.items() if files])
     if category_count > 2:
         template_vars['complexity_note'] = "\n\n**Multi-area changes detected** - review cross-component impacts carefully."
     else:
         template_vars['complexity_note'] = ""
-    # Debug: Print template_vars to see what's available
-    print(f"DEBUG: Template vars keys: {list(template_vars.keys())}")
     
     # Template rendering using the persona system
     template = """## Operator Instructions
@@ -117,6 +113,120 @@ You are a **{persona_name}** working on: **{goal}**
 """
     
     return template.format(**template_vars)
+
+def synthesize_initial_operator_instructions(enhanced_context, persona):
+    """Generate operator instructions for initial stage using YML template"""
+    
+    # Load the YML template
+    try:
+        persona_config = template_loader.load_persona("senior-backend-dev-initial")
+        rprint(f"[dim]Loaded YML template: senior-backend-dev-initial[/dim]")
+    except Exception as e:
+        rprint(f"[dim]Could not load initial template: {e}[/dim]")
+        # Fallback to basic template
+        persona_config = {
+            'role': 'Senior Backend Developer',
+            'context': 'You are setting up a new project from scratch',
+            'guidelines_do': ['Focus on architectural decisions and project setup'],
+            'guidelines_dont': ['Over-engineer for current requirements'],
+            'task_priorities': ['Design system architecture and component boundaries'],
+            'risk_factors': ['Technology choice paralysis']
+        }
+    
+    # Extract CLI context
+    focus = enhanced_context.get('focus', 'project setup')
+    output = enhanced_context.get('output', 'working foundation')
+    constraints = enhanced_context.get('constraints', 'best practices')
+    
+    # Build template from YML data
+    role = persona_config.get('role', 'Senior Backend Developer')
+    context_desc = persona_config.get('context', 'setting up a new project')
+    
+    # Format guidelines from YML
+    guidelines_do = persona_config.get('guidelines_do', [])
+    guidelines_dont = persona_config.get('guidelines_dont', [])
+    task_priorities = persona_config.get('task_priorities', [])
+    risk_factors = persona_config.get('risk_factors', [])
+    
+    # Build the sections
+    do_section = '\n'.join([f"- {item}" for item in guidelines_do])
+    dont_section = '\n'.join([f"- {item}" for item in guidelines_dont])
+    tasks_section = '\n'.join([f"- {item}" for item in task_priorities])
+    risks_section = '\n'.join([f"- {item}" for item in risk_factors])
+    
+    return f"""## Operator Instructions
+
+You are a **{role}** {context_desc}.
+
+**Primary Focus**: {focus}
+
+### Guidelines
+
+**Do:**
+{do_section}
+
+**Don't:**
+{dont_section}
+
+### Tasks for This Session
+{tasks_section}
+
+### Expected Outputs
+{output}
+
+### Risk Factors
+{risks_section}
+
+---
+"""
+
+def synthesize_initial_decisions_constraints(enhanced_context):
+    """Generate decisions and constraints for initial stage using YML template"""
+    
+    # Load the YML template for additional context
+    try:
+        persona_config = template_loader.load_persona("senior-backend-dev-initial")
+        focus_areas = persona_config.get('focus_areas', [])
+    except Exception:
+        focus_areas = ['Architecture and design decisions', 'Technology stack selection', 'Project structure and setup', 'Development environment configuration']
+    
+    constraints = enhanced_context.get('constraints', 'best practices')
+    
+    # Build technical approach from YML focus areas
+    approach_items = []
+    for area in focus_areas:
+        if 'architecture' in area.lower():
+            approach_items.append("- **Architecture**: Design for scalability and maintainability")
+        elif 'technology' in area.lower():
+            approach_items.append("- **Technology**: Select proven, well-supported technologies")
+        elif 'development' in area.lower() or 'environment' in area.lower():
+            approach_items.append("- **Development**: Set up proper development and testing environment")
+        elif 'project structure' in area.lower() or 'setup' in area.lower():
+            approach_items.append("- **Documentation**: Document key architectural decisions")
+    
+    # Fallback if no items
+    if not approach_items:
+        approach_items = [
+            "- **Architecture**: Design for scalability and maintainability",
+            "- **Technology**: Select proven, well-supported technologies",
+            "- **Development**: Set up proper development and testing environment",
+            "- **Documentation**: Document key architectural decisions"
+        ]
+    
+    approach_section = '\n'.join(approach_items)
+    
+    return f"""## Decisions & Constraints
+
+**Project Requirements**: {constraints}
+
+## Technical Approach
+{approach_section}
+
+## Initial Setup Priorities
+1. **Architecture Design**: Define system boundaries and component interactions
+2. **Technology Selection**: Choose appropriate frameworks and databases
+3. **Environment Setup**: Configure development and deployment environments
+4. **Foundation Code**: Create project structure and basic scaffolding"""
 
 def synthesize_current_state(recent_commits: List[Dict[str, Any]], file_categories: Dict[str, List[str]]) -> str:
     """Generate current state from git data with enhanced analysis"""
@@ -433,38 +543,72 @@ def synthesize_decisions_constraints(thread_data: Dict[str, Any], file_categorie
 - **Timeline**: Iterative development with working increments"""
 
 def generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context):
+    """Generate all synthesis sections using persona templates"""
+    
     # Handle enhanced context safely
     if enhanced_context is None:
         enhanced_context = {}
+    
+    # Get stage and template strategy
+    stage = enhanced_context.get('stage', 'development')
+    
+    # For initial stage, ignore git analysis
+    if stage == "initial":
+        return generate_initial_stage_snapshot(thread_data, enhanced_context, persona)
+    else:
+        return generate_development_stage_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context)
 
+def generate_initial_stage_snapshot(thread_data, enhanced_context, persona):
+    """Generate snapshot for initial/greenfield stage - no git analysis"""
+    
+    # Load the initial stage template
+    try:
+        template_content = template_loader.load_template_with_stage(
+            persona, "initial", {}, enhanced_context
+        )
+        rprint(f"[dim]Using initial stage template[/dim]")
+    except Exception as e:
+        template_content = "Initial stage template not found"
+        rprint(f"[dim]Template loading failed: {e}[/dim]")
+    
+    # Generate only CLI-context sections (no git analysis)
+    sections = {
+        'operator_instructions': synthesize_initial_operator_instructions(enhanced_context, persona),
+        'current_state': "This is a greenfield project - no existing codebase to analyze.",
+        'decisions_constraints': synthesize_initial_decisions_constraints(enhanced_context),
+        'open_questions': "No existing code to analyze for questions."
+    }
+    
+    return sections
+
+def generate_development_stage_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context):
+    """Generate snapshot for development/maintenance stage - full git analysis"""
+    
     # Categorize files
     file_categories = categorize_files(file_paths)
-
+    
     # Create context for template loading
     context = {
         'repo_root': repo_root,
         'file_categories': file_categories,
         'thread_data': thread_data
     }
-
-    # Get stage from enhanced context
-    stage = enhanced_context.get('stage', 'development')
-
+    
     # Use stage-aware template loading
     try:
         template_content = template_loader.load_template_with_stage(
-            persona, stage, context, enhanced_context
+            persona, enhanced_context.get('stage', 'development'), context, enhanced_context
         )
-        rprint(f"[dim]Loaded stage-specific template for {stage}[/dim]")
+        rprint(f"[dim]Loaded template for {enhanced_context.get('stage', 'development')} stage[/dim]")
     except Exception as e:
-        rprint(f"[dim]Using default template: {e}[/dim]")
-
-    # Generate all sections
+        rprint(f"[dim]Template loading failed: {e}[/dim]")
+    
+    # Generate all sections (including git analysis)
     sections = {
         'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona, enhanced_context),
         'current_state': synthesize_current_state(recent_commits, file_categories),
         'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
         'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
     }
-
+    
     return sections
