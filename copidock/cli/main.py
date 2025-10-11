@@ -14,11 +14,6 @@ from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROF
 from ..interactive.detection import auto_detect_context
 from ..interactive.flow import run_interactive_flow, confirm_snapshot_creation
 
-# ...rest of your code stays the same...
-
-# ^ if you keep config/ at repo root; make sure config/__init__.py exists
-
-
 app = typer.Typer(add_completion=False, help="Copidock CLI - Serverless note management")
 
 def create_rehydration_markdown(thread_data: Dict, synth_sections: Dict, file_paths: list, recent_commits: list, enhanced_context: Dict) -> str:
@@ -238,15 +233,32 @@ def snapshot_cmd(
                 'output': output, 
                 'constraints': constraints,
                 'stage': detected_stage,
-            }          
+            }
             
-            # Generate synthesis sections
-            synth_sections = generate_comprehensive_snapshot(
-                thread_data, file_paths, recent_commits, str(repo_root), persona, enhanced_context
-            )
+            # Generate synthesis sections based on stage
+            if detected_stage == "initial":
+                # For initial stage, use empty arrays to avoid git-based counts
+                empty_file_paths = []
+                empty_commits = []
+                
+                from .synthesis import generate_initial_stage_snapshot
+                synth_sections = generate_initial_stage_snapshot(
+                    thread_data, enhanced_context, persona, comprehensive=True
+                )
+                
+                # Override file/commit counts for initial stage
+                file_paths = empty_file_paths
+                recent_commits = empty_commits
+                
+            else:
+                # For development/maintenance stage, use full git analysis
+                from .synthesis import generate_development_stage_snapshot
+                synth_sections = generate_development_stage_snapshot(
+                    thread_data, file_paths, recent_commits, str(repo_root), persona, enhanced_context
+                )
             
+            # Hydrate logic for comprehensive mode
             if hydrate:
-                # Create rehydration markdown
                 markdown_content = create_rehydration_markdown(
                     thread_data, synth_sections, file_paths, recent_commits, enhanced_context
                 )
@@ -262,23 +274,13 @@ def snapshot_cmd(
                 })
                 
                 if not json_out:
-                    rprint(f"[green]Snapshot hydrated to S3[/green]: {hydrate_data['rehydration_id']}")
-                    rprint(f"[dim]Markdown saved for future rehydration[/dim]")
+                    rprint(f"[green]Comprehensive snapshot hydrated to S3[/green]: {hydrate_data['rehydration_id']}")
+                    if detected_stage == "initial":
+                        rprint(f"[dim]Rich YML template guidance provided[/dim]")
+                    else:
+                        rprint(f"[dim]Full git analysis included[/dim]")
             
-            # SHOW THE INTELLIGENT TEMPLATE OUTPUT
-            print("\n" + "="*70)
-            print("INTELLIGENT TEMPLATE SYSTEM OUTPUT")
-            print("="*70)
-            for section_name, content in synth_sections.items():
-                print(f"\n {section_name.replace('_', ' ').title()}")
-                print("-" * 50)
-                print(content)
-                print("")
-            print("="*70)
-            print("Template system working perfectly!")
-            print("="*70 + "\n")
-
-            # Create inline sources
+            # Create inline sources (existing logic)
             inline_sources = []
             for file_path in file_paths:
                 try:
@@ -303,16 +305,9 @@ def snapshot_cmd(
                 except Exception:
                     continue
             
-            # Show what we're including
-            if not json_out:
-                rprint(f"[green]Comprehensive snapshot with {len(file_paths)} files[/green]")
-                rprint(f"[dim]Recent commits: {len(recent_commits)}[/dim]")
-                rprint(f"[dim]Synthesis sections: {len(synth_sections)}[/dim]")
-            
             # Create comprehensive snapshot
             data = client.create_comprehensive_snapshot(thread_id, inline_sources, synth_sections, message)
             
-            # Comprehensive mode output
             if json_out:
                 rprint(data)
             else:
@@ -322,7 +317,75 @@ def snapshot_cmd(
         except Exception as e:
             rprint(f"[red]Error creating comprehensive snapshot:[/red] {e}")
             raise typer.Exit(1)
-    
+
+    # Handle initial stage without comprehensive (plain/empty template)  
+    elif detected_stage == "initial":
+        from .synthesis import generate_initial_stage_snapshot
+        
+        thread_data = {
+            'goal': state.get('goal', 'development task'),
+            'repo': state.get('repo', ''),
+            'branch': state.get('branch', 'main')
+        }
+        
+        enhanced_context = {
+            'focus': focus,
+            'output': output, 
+            'constraints': constraints,
+            'stage': detected_stage,
+        }
+        
+        # Call your perfect function with comprehensive=False
+        synth_sections = generate_initial_stage_snapshot(
+            thread_data, enhanced_context, persona, comprehensive=False
+        )
+        
+        # Complete hydrate logic for plain/empty template
+        if hydrate:
+            # Create rehydration markdown with empty file/commit arrays
+            empty_file_paths = []
+            empty_commits = []
+            
+            markdown_content = create_rehydration_markdown(
+                thread_data, synth_sections, empty_file_paths, empty_commits, enhanced_context
+            )
+
+            hydrate_data = client.hydrate_snapshot(thread_id, markdown_content, {
+                'persona': persona,
+                'focus': focus,
+                'output': output,
+                'constraints': constraints,
+                'stage': detected_stage,
+                'file_count': 0,
+                'commit_count': 0
+            })
+            
+            if not json_out:
+                rprint(f"[green]Initial stage snapshot hydrated to S3[/green]: {hydrate_data['rehydration_id']}")
+                rprint(f"[dim]Empty template structure created for manual customization[/dim]")
+        
+        # SHOW THE TEMPLATE OUTPUT
+        print("\n" + "="*70)
+        print("INITIAL STAGE TEMPLATE (EMPTY STRUCTURE)")
+        print("="*70)
+        for section_name, content in synth_sections.items():
+            print(f"\n {section_name.replace('_', ' ').title()}")
+            print("-" * 50)
+            print(content)
+            print("")
+        print("="*70)
+        print("Empty template structure ready for customization!")
+        print("="*70 + "\n")
+        
+        # Create empty snapshot
+        data = client.create_snapshot(thread_id, [], f"Initial stage template: {message}")
+        
+        if json_out:
+            rprint(data)
+        else:
+            rprint(f"[green]Initial stage snapshot created[/green]: {data['snapshot_id']}")
+            rprint(f"[dim]Empty structure ready for customization[/dim]")
+
     # Handle auto mode
     elif auto:
         from .gather import build_smart_paths

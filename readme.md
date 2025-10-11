@@ -152,3 +152,11 @@ python -m copidock.cli.main thread [OPTIONS] ACTION [GOAL]
 | `--api` | TEXT | (from config) | Override API base URL |
 | `--json` | flag | `false` | Output results in JSON format |
 | `--help` | flag | - | Show command help and exit |
+
+## Simplified Flag Logic
+
+# Rich YML template guidance
+copidock snapshot create --interactive --stage initial --comprehensive --hydrate
+
+# Empty structure only  
+copidock snapshot create --interactive --stage initial --hydrate
