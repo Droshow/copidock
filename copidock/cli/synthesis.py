@@ -117,12 +117,13 @@ You are a **{persona_name}** working on: **{goal}**
 def synthesize_initial_operator_instructions(enhanced_context, persona):
     """Generate operator instructions for initial stage using YML template"""
     
-    # Load the YML template
+    # Load the YML template - MAKE THIS DYNAMIC
     try:
-        persona_config = template_loader.load_persona("senior-backend-dev-initial")
-        rprint(f"[dim]Loaded YML template: senior-backend-dev-initial[/dim]")
+        template_name = f"{persona}-initial"
+        persona_config = template_loader.load_persona(template_name)
+        rprint(f"[dim]Loaded YML template: {template_name}[/dim]")
     except Exception as e:
-        rprint(f"[dim]Could not load initial template: {e}[/dim]")
+        rprint(f"[dim]Could not load initial template: {template_name} - {e}[/dim]")
         # Fallback to basic template
         persona_config = {
             'role': 'Senior Backend Developer',
@@ -180,12 +181,13 @@ You are a **{role}** {context_desc}.
 ---
 """
 
-def synthesize_initial_decisions_constraints(enhanced_context):
+def synthesize_initial_decisions_constraints(enhanced_context, persona):
     """Generate decisions and constraints for initial stage using YML template"""
     
-    # Load the YML template for additional context
+    # Load the YML template for additional context - MAKE THIS DYNAMIC
     try:
-        persona_config = template_loader.load_persona("senior-backend-dev-initial")
+        template_name = f"{persona}-initial"
+        persona_config = template_loader.load_persona(template_name)
         focus_areas = persona_config.get('focus_areas', [])
     except Exception:
         focus_areas = ['Architecture and design decisions', 'Technology stack selection', 'Project structure and setup', 'Development environment configuration']
@@ -552,13 +554,19 @@ def generate_comprehensive_snapshot(thread_data, file_paths, recent_commits, rep
     # Get stage and template strategy
     stage = enhanced_context.get('stage', 'development')
     
+    # DEBUGGING: Print what stage we detected
+    rprint(f"[dim]🔍 Detected stage: {stage}[/dim]")
+    rprint(f"[dim]🔍 Input persona: {persona}[/dim]")
+    
     # For initial stage, ignore git analysis
     if stage == "initial":
+        rprint(f"[dim]→ Using initial stage logic[/dim]")
         return generate_initial_stage_snapshot(thread_data, enhanced_context, persona)
     else:
+        rprint(f"[dim]→ Using development stage logic[/dim]")
         return generate_development_stage_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context)
 
-def generate_initial_stage_snapshot(thread_data, enhanced_context, persona, comprehensive=False):
+def generate_initial_stage_snapshot(thread_data, enhanced_context, persona, comprehensive=True):
     """Generate snapshot for initial/greenfield stage - no git analysis"""
     
     if comprehensive:
@@ -567,7 +575,7 @@ def generate_initial_stage_snapshot(thread_data, enhanced_context, persona, comp
         sections = {
             'operator_instructions': synthesize_initial_operator_instructions_with_template(enhanced_context, persona),
             'current_state': "This is a greenfield project - comprehensive template guidance provided.",
-            'decisions_constraints': synthesize_initial_decisions_constraints_with_template(enhanced_context),
+            'decisions_constraints': synthesize_initial_decisions_constraints_with_template(enhanced_context, persona),
             'open_questions': "Template-based questions and considerations provided."
         }
     else:
@@ -582,15 +590,14 @@ def generate_initial_stage_snapshot(thread_data, enhanced_context, persona, comp
     
     return sections
 
-# ADD THESE NEW FUNCTIONS:
-
 def synthesize_initial_operator_instructions_with_template(enhanced_context, persona):
     """Rich YML template guidance - COMPREHENSIVE"""
     
-    # Load the YML template
+    # Load the YML template - MAKE THIS DYNAMIC
     try:
-        persona_config = template_loader.load_persona("senior-backend-dev-initial")
-        rprint(f"[dim]✓ Loaded comprehensive YML template: senior-backend-dev-initial[/dim]")
+        template_name = f"{persona}-initial"
+        persona_config = template_loader.load_persona(template_name)
+        rprint(f"[dim]✓ Loaded comprehensive YML template: {template_name}[/dim]")
         
         # Extract CLI context
         focus = enhanced_context.get('focus', 'project setup')
@@ -640,7 +647,7 @@ You are a **{role}** {context_desc}.
 """
         
     except Exception as e:
-        rprint(f"[red] Could not load YML template: {e}[/red]")
+        rprint(f"[red] Could not load YML template: {template_name} - {e}[/red]")
         rprint(f"[red]Exception type: {type(e).__name__}[/red]")
         rprint(f"[red]Falling back to empty structure[/red]")
         # Fallback to empty structure
@@ -674,14 +681,15 @@ You are a **Senior Backend Developer** setting up a new project from scratch.
 ---
 """
 
-def synthesize_initial_decisions_constraints_with_template(enhanced_context):
+def synthesize_initial_decisions_constraints_with_template(enhanced_context, persona):
     """Rich decisions section WITH template guidance"""
     
     constraints = enhanced_context.get('constraints', 'best practices')
     
-    # Load template for additional context
+    # Load template for additional context - MAKE THIS DYNAMIC
     try:
-        persona_config = template_loader.load_persona("senior-backend-dev-initial")
+        template_name = f"{persona}-initial"
+        persona_config = template_loader.load_persona(template_name)
         focus_areas = persona_config.get('focus_areas', [])
         
         # Build technical approach from YML focus areas
@@ -732,33 +740,576 @@ def synthesize_initial_decisions_constraints_empty(enhanced_context):
 4. """
 
 def generate_development_stage_snapshot(thread_data, file_paths, recent_commits, repo_root, persona, enhanced_context):
-    """Generate snapshot for development/maintenance stage - full git analysis"""
+    """Generate comprehensive development stage snapshot with git analysis"""
     
-    # Categorize files
-    file_categories = categorize_files(file_paths)
+    if enhanced_context is None:
+        enhanced_context = {}
     
-    # Create context for template loading
-    context = {
-        'repo_root': repo_root,
-        'file_categories': file_categories,
-        'thread_data': thread_data
-    }
+    # Analyze development context from git changes
+    dev_context = analyze_development_context(file_paths, recent_commits, repo_root)
     
-    # Use stage-aware template loading
+    # Load development-specific template
     try:
-        template_content = template_loader.load_template_with_stage(
-            persona, enhanced_context.get('stage', 'development'), context, enhanced_context
-        )
-        rprint(f"[dim]Loaded template for {enhanced_context.get('stage', 'development')} stage[/dim]")
+        from ..templates.loader import template_loader
+        rprint(f"[dim]🔍 Loading development template for: {persona}[/dim]")
+        
+        persona_config = template_loader.load_persona(f"{persona}-development")
+        rprint(f"[green]✓ Successfully loaded development YML template[/green]")
+        
+        # DEBUG: Print development context analysis
+        rprint(f"[dim]Detected work area: {dev_context.get('work_area', 'general')}[/dim]")
+        rprint(f"[dim]Change impact: {dev_context.get('change_impact', 'medium')}[/dim]")
+        rprint(f"[dim]Modified files: {len(file_paths)} files[/dim]")
+        rprint(f"[dim]Recent commits: {len(recent_commits)} commits[/dim]")
+        
+        sections = {
+            'operator_instructions': synthesize_development_operator_instructions_with_template(
+                enhanced_context, persona, persona_config, dev_context
+            ),
+            'current_state': synthesize_development_current_state(
+                file_paths, recent_commits, dev_context, repo_root
+            ),
+            'decisions_constraints': synthesize_development_decisions_constraints_with_template(
+                enhanced_context, persona_config, dev_context
+            ),
+            'open_questions': synthesize_development_open_questions(
+                dev_context, file_paths, recent_commits
+            )
+        }
+        
+        rprint(f"[green]✓ Development synthesis completed successfully[/green]")
+        return sections
+        
     except Exception as e:
-        rprint(f"[dim]Template loading failed: {e}[/dim]")
+        rprint(f"[red]❌ Could not load development template: {e}[/red]")
+        rprint(f"[red]Falling back to basic development synthesis[/red]")
+        
+        # Fallback to basic development synthesis
+        return generate_basic_development_snapshot(thread_data, file_paths, recent_commits, enhanced_context)
+
+def analyze_development_context(file_paths, recent_commits, repo_root):
+    """Analyze what type of development work is happening"""
     
-    # Generate all sections (including git analysis)
-    sections = {
-        'operator_instructions': synthesize_operator_instructions(thread_data, file_categories, persona, enhanced_context),
-        'current_state': synthesize_current_state(recent_commits, file_categories),
-        'decisions_constraints': synthesize_decisions_constraints(thread_data, file_categories),
-        'open_questions': mine_open_questions(file_paths, repo_root, recent_commits)
+    # Analyze file types and patterns
+    file_analysis = analyze_file_patterns(file_paths)
+    
+    # Analyze commit messages for intent
+    commit_analysis = analyze_commit_patterns(recent_commits)
+    
+    # Determine primary work area
+    work_area = determine_work_area(file_analysis)
+    
+    # Assess change impact
+    change_impact = assess_change_impact(file_analysis, commit_analysis)
+    
+    # Generate specific recommendations
+    recommendations = generate_development_recommendations(work_area, file_analysis, commit_analysis)
+    
+    return {
+        'work_area': work_area,
+        'change_impact': change_impact,
+        'file_analysis': file_analysis,
+        'commit_analysis': commit_analysis,
+        'recommendations': recommendations,
+        'risk_areas': identify_risk_areas(work_area, file_analysis)
+    }
+
+def analyze_file_patterns(file_paths):
+    """Analyze the types of files being modified"""
+    patterns = {
+        'api': 0,
+        'frontend': 0,
+        'database': 0,
+        'tests': 0,
+        'config': 0,
+        'docs': 0,
+        'other': 0
     }
     
-    return sections
+    file_details = []
+    
+    for file_path in file_paths:
+        path_lower = file_path.lower()
+        file_type = 'other'
+        
+        if any(keyword in path_lower for keyword in ['api/', 'endpoints/', 'routes/', 'controllers/']):
+            file_type = 'api'
+        elif any(keyword in path_lower for keyword in ['frontend/', 'ui/', 'components/', 'views/', '.vue', '.jsx', '.tsx']):
+            file_type = 'frontend'  
+        elif any(keyword in path_lower for keyword in ['migration', 'schema', 'models/', 'database/']):
+            file_type = 'database'
+        elif any(keyword in path_lower for keyword in ['test', 'spec', '__tests__']):
+            file_type = 'tests'
+        elif any(keyword in path_lower for keyword in ['config', 'settings', '.env', 'docker', 'deploy']):
+            file_type = 'config'
+        elif any(keyword in path_lower for keyword in ['readme', 'docs/', '.md', 'documentation']):
+            file_type = 'docs'
+        
+        patterns[file_type] += 1
+        file_details.append({
+            'path': file_path,
+            'type': file_type
+        })
+    
+    return {
+        'patterns': patterns,
+        'details': file_details,
+        'total_files': len(file_paths)
+    }
+
+def analyze_commit_patterns(recent_commits):
+    """Analyze commit messages to understand development intent"""
+    if not recent_commits:
+        return {'intent': 'unknown', 'patterns': [], 'urgency': 'normal'}
+    
+    commit_messages = [commit.get('message', '').lower() for commit in recent_commits]
+    combined_text = ' '.join(commit_messages)
+    
+    # Detect intent patterns
+    intent_patterns = {
+        'feature': ['add', 'implement', 'create', 'new'],
+        'bugfix': ['fix', 'bug', 'issue', 'resolve', 'correct'],
+        'refactor': ['refactor', 'clean', 'improve', 'optimize'],
+        'docs': ['docs', 'documentation', 'readme', 'comment'],
+        'test': ['test', 'testing', 'spec', 'coverage'],
+        'config': ['config', 'setup', 'deploy', 'ci', 'build']
+    }
+    
+    detected_intent = 'general'
+    max_matches = 0
+    
+    for intent, keywords in intent_patterns.items():
+        matches = sum(1 for keyword in keywords if keyword in combined_text)
+        if matches > max_matches:
+            max_matches = matches
+            detected_intent = intent
+    
+    # Detect urgency
+    urgency = 'normal'
+    urgent_keywords = ['urgent', 'critical', 'hotfix', 'emergency', 'asap']
+    if any(keyword in combined_text for keyword in urgent_keywords):
+        urgency = 'high'
+    
+    return {
+        'intent': detected_intent,
+        'urgency': urgency,
+        'commit_count': len(recent_commits),
+        'keywords_found': max_matches
+    }
+
+def determine_work_area(file_analysis):
+    """Determine the primary area of development work"""
+    patterns = file_analysis['patterns']
+    
+    # Find the area with the most file changes
+    max_files = max(patterns.values())
+    if max_files == 0:
+        return 'general'
+    
+    for area, count in patterns.items():
+        if count == max_files and area != 'other':
+            return area
+    
+    return 'general'
+
+def assess_change_impact(file_analysis, commit_analysis):
+    """Assess the potential impact of changes"""
+    file_count = file_analysis['total_files']
+    commit_count = commit_analysis['commit_count']
+    urgency = commit_analysis['urgency']
+    
+    if urgency == 'high' or file_count > 10 or commit_count > 5:
+        return 'high'
+    elif file_count > 5 or commit_count > 3:
+        return 'medium'
+    else:
+        return 'low'
+
+def generate_development_recommendations(work_area, file_analysis, commit_analysis):
+    """Generate specific recommendations based on the development context"""
+    recommendations = []
+    
+    intent = commit_analysis['intent']
+    
+    if work_area == 'api':
+        recommendations.extend([
+            "Test all modified API endpoints thoroughly",
+            "Verify authentication and authorization still work",
+            "Update API documentation (OpenAPI/Swagger)",
+            "Check for breaking changes in API contracts"
+        ])
+    
+    elif work_area == 'frontend':
+        recommendations.extend([
+            "Test across different browsers and screen sizes", 
+            "Check mobile responsiveness",
+            "Verify accessibility compliance",
+            "Test user interactions and workflows"
+        ])
+    
+    elif work_area == 'database':
+        recommendations.extend([
+            "Create reversible database migrations",
+            "Test migrations on staging data first",
+            "Backup production data before deployment",
+            "Monitor query performance impact"
+        ])
+    
+    elif work_area == 'tests':
+        recommendations.extend([
+            "Run full test suite to ensure no regressions",
+            "Check test coverage metrics",
+            "Verify tests are not flaky or interdependent",
+            "Update test documentation if needed"
+        ])
+    
+    # Add intent-specific recommendations
+    if intent == 'feature':
+        recommendations.extend([
+            "Document the new feature functionality",
+            "Add comprehensive tests for the new feature",
+            "Consider feature flags for gradual rollout"
+        ])
+    elif intent == 'bugfix':
+        recommendations.extend([
+            "Add regression tests to prevent future occurrences",
+            "Verify the fix doesn't introduce new issues",
+            "Document the root cause and solution"
+        ])
+    
+    return recommendations
+
+def identify_risk_areas(work_area, file_analysis):
+    """Identify potential risk areas based on development context"""
+    risks = []
+    
+    if work_area == 'api':
+        risks.extend([
+            "Breaking API contracts for existing clients",
+            "Authentication or authorization bypass",
+            "Performance impact on high-traffic endpoints"
+        ])
+    elif work_area == 'database':
+        risks.extend([
+            "Data loss during migration",
+            "Performance degradation of existing queries",
+            "Constraint violations with existing data"
+        ])
+    elif work_area == 'frontend':
+        risks.extend([
+            "Cross-browser compatibility issues",
+            "Mobile device performance problems",
+            "Accessibility regressions"
+        ])
+    
+    # General risks based on file count
+    if file_analysis['total_files'] > 5:
+        risks.append("High number of file changes increases integration risk")
+    
+    return risks
+
+def synthesize_development_operator_instructions_with_template(enhanced_context, persona, persona_config, dev_context):
+    """Generate development-focused operator instructions"""
+    
+    focus = enhanced_context.get('focus', 'development work')
+    output = enhanced_context.get('output', 'working implementation')
+    work_area = dev_context.get('work_area', 'general')
+    
+    # Get base guidelines
+    guidelines_do = persona_config.get('guidelines_do', [])
+    guidelines_dont = persona_config.get('guidelines_dont', [])
+    task_priorities = persona_config.get('task_priorities', [])
+    risk_factors = persona_config.get('risk_factors', [])
+    
+    # Add context-specific guidelines
+    dev_contexts = persona_config.get('development_contexts', {})
+    if work_area in dev_contexts:
+        context_specific = dev_contexts[work_area]
+        guidelines_do.extend(context_specific.get('specific_guidelines', []))
+        risk_factors.extend(context_specific.get('risk_factors', []))
+    
+    # Add recommendations from analysis
+    recommendations = dev_context.get('recommendations', [])
+    
+    # Build sections
+    do_section = '\n'.join([f"- {item}" for item in guidelines_do])
+    dont_section = '\n'.join([f"- {item}" for item in guidelines_dont])
+    tasks_section = '\n'.join([f"- {item}" for item in task_priorities])
+    risks_section = '\n'.join([f"- {item}" for item in risk_factors])
+    recommendations_section = '\n'.join([f"- {item}" for item in recommendations])
+    
+    return f"""## Operator Instructions
+
+You are a **{persona_config.get('role', 'Senior Backend Developer')}** {persona_config.get('context', 'working on development tasks')}.
+
+**Primary Focus**: {focus}
+**Development Area**: {work_area.title()} Development
+**Change Impact**: {dev_context.get('change_impact', 'medium').title()}
+
+### Guidelines
+
+**Do:**
+{do_section}
+
+**Don't:**
+{dont_section}
+
+### Development Tasks for This Session
+{tasks_section}
+
+### Context-Specific Recommendations
+{recommendations_section}
+
+### Expected Outputs
+{output}
+
+### Risk Factors
+{risks_section}
+
+---
+"""
+
+def synthesize_development_current_state(file_paths, recent_commits, dev_context, repo_root):
+    """Generate current state analysis for development work"""
+    
+    work_area = dev_context.get('work_area', 'general')
+    file_analysis = dev_context.get('file_analysis', {})
+    commit_analysis = dev_context.get('commit_analysis', {})
+    
+    # File summary
+    file_summary = f"**Modified Files**: {len(file_paths)} files across {work_area} area"
+    
+    # Recent work summary
+    intent = commit_analysis.get('intent', 'general')
+    commit_count = commit_analysis.get('commit_count', 0)
+    work_summary = f"**Recent Work**: {commit_count} commits focused on {intent} work"
+    
+    # File breakdown
+    patterns = file_analysis.get('patterns', {})
+    breakdown_items = []
+    for area, count in patterns.items():
+        if count > 0 and area != 'other':
+            breakdown_items.append(f"- **{area.title()}**: {count} files")
+    
+    breakdown = '\n'.join(breakdown_items) if breakdown_items else "- General development work"
+    
+    return f"""## Current Development State
+
+{file_summary}
+{work_summary}
+
+### File Breakdown
+{breakdown}
+
+### Development Context
+- **Primary Area**: {work_area.title()} development
+- **Change Impact**: {dev_context.get('change_impact', 'medium').title()}
+- **Work Intent**: {intent.title()} implementation
+
+### Recent Activity
+- Last {commit_count} commits show {intent} work
+- {len(file_paths)} files modified in current session
+- Focus area: {work_area} development
+
+"""
+
+def synthesize_development_decisions_constraints_with_template(enhanced_context, persona_config, dev_context):
+    """Generate development-focused decisions and constraints"""
+    
+    constraints = enhanced_context.get('constraints', 'best practices')
+    work_area = dev_context.get('work_area', 'general')
+    
+    # Load focus areas from template
+    focus_areas = persona_config.get('focus_areas', [])
+    
+    # Build technical approach from context
+    approach_items = []
+    for area in focus_areas:
+        if 'quality' in area.lower():
+            approach_items.append("- **Code Quality**: Maintain consistency with existing codebase")
+        elif 'testing' in area.lower():
+            approach_items.append("- **Testing**: Comprehensive testing for all modifications")
+        elif 'documentation' in area.lower():
+            approach_items.append("- **Documentation**: Update docs to reflect changes")
+        elif 'integration' in area.lower():
+            approach_items.append("- **Integration**: Ensure compatibility with existing systems")
+        elif 'performance' in area.lower():
+            approach_items.append("- **Performance**: Monitor and optimize performance impact")
+        elif 'security' in area.lower():
+            approach_items.append("- **Security**: Review security implications of changes")
+    
+    approach_section = '\n'.join(approach_items)
+    
+    # Development priorities based on context
+    priorities = []
+    if work_area == 'api':
+        priorities = [
+            "**API Compatibility**: Maintain backwards compatibility",
+            "**Testing**: Test all endpoints and edge cases", 
+            "**Documentation**: Update API documentation",
+            "**Performance**: Monitor response times and throughput"
+        ]
+    elif work_area == 'frontend':
+        priorities = [
+            "**User Experience**: Maintain consistent UI patterns",
+            "**Cross-Browser**: Test across different browsers",
+            "**Performance**: Optimize for mobile and desktop",
+            "**Accessibility**: Ensure accessibility compliance"
+        ]
+    elif work_area == 'database':
+        priorities = [
+            "**Data Integrity**: Ensure migration safety",
+            "**Performance**: Monitor query performance impact", 
+            "**Rollback**: Plan rollback strategies",
+            "**Testing**: Test migrations on staging data"
+        ]
+    else:
+        priorities = [
+            "**Code Quality**: Follow established patterns",
+            "**Testing**: Add comprehensive test coverage",
+            "**Integration**: Verify system integration",
+            "**Documentation**: Update relevant documentation"
+        ]
+    
+    priorities_section = '\n'.join([f"{i+1}. {priority}" for i, priority in enumerate(priorities)])
+    
+    return f"""## Decisions & Constraints
+
+**Project Requirements**: {constraints}
+
+## Technical Approach
+{approach_section}
+
+## Development Priorities
+{priorities_section}"""
+
+def synthesize_development_open_questions(dev_context, file_paths, recent_commits):
+    """Generate context-aware open questions for development work"""
+    
+    work_area = dev_context.get('work_area', 'general')
+    change_impact = dev_context.get('change_impact', 'medium')
+    recommendations = dev_context.get('recommendations', [])
+    risks = dev_context.get('risk_areas', [])
+    
+    questions = []
+    
+    # Add area-specific questions
+    if work_area == 'api':
+        questions.extend([
+            "Are there any breaking changes in the API modifications?",
+            "Do we need to version these API changes?",
+            "Have all authentication scenarios been tested?",
+            "Is the API documentation up to date?"
+        ])
+    elif work_area == 'database':
+        questions.extend([
+            "Can these database changes be rolled back safely?",
+            "Have migrations been tested with production-like data?",
+            "Will these changes impact query performance?",
+            "Are there any data integrity concerns?"
+        ])
+    elif work_area == 'frontend':
+        questions.extend([
+            "Have these changes been tested on mobile devices?",
+            "Are there any accessibility concerns with the UI changes?",
+            "Do these changes impact page load performance?",
+            "Are the UI patterns consistent with the rest of the application?"
+        ])
+    
+    # Add risk-based questions
+    if change_impact == 'high':
+        questions.extend([
+            "Should these high-impact changes be deployed gradually?",
+            "Do we have adequate monitoring for these changes?",
+            "Is there a rollback plan if issues arise?"
+        ])
+    
+    # Add recommendation-based questions
+    if len(recommendations) > 3:
+        questions.append("Are there too many changes being made at once?")
+    
+    if len(file_paths) > 8:
+        questions.append("Should this work be broken into smaller, more focused changes?")
+    
+    # Default questions if none specific
+    if not questions:
+        questions = [
+            "Are there any potential integration issues with existing code?",
+            "Have all edge cases been considered and tested?", 
+            "Is additional documentation needed for these changes?",
+            "Are there performance implications to consider?"
+        ]
+    
+    questions_section = '\n'.join([f"- {question}" for question in questions])
+    
+    return f"""## Open Questions & Considerations
+
+### Development Questions
+{questions_section}
+
+### Risk Assessment
+{chr(10).join([f"- {risk}" for risk in risks]) if risks else "- Standard development risks apply"}
+
+### Next Steps
+- Review and address the questions above
+- Complete testing based on recommendations
+- Update documentation as needed
+- Plan deployment and monitoring strategy"""
+
+def generate_basic_development_snapshot(thread_data, file_paths, recent_commits, enhanced_context):
+    """Fallback development synthesis without YML template"""
+    
+    focus = enhanced_context.get('focus', 'development work')
+    output = enhanced_context.get('output', 'working implementation')
+    constraints = enhanced_context.get('constraints', 'best practices')
+    
+    return {
+        'operator_instructions': f"""## Operator Instructions
+
+You are a **Senior Backend Developer** working on ongoing development tasks.
+
+**Primary Focus**: {focus}
+
+### Development Guidelines
+- Follow existing code patterns and conventions
+- Write comprehensive tests for all changes
+- Update documentation to reflect modifications
+- Consider backwards compatibility and integration impact
+
+### Expected Outputs
+{output}
+
+---
+""",
+        'current_state': f"""## Current Development State
+
+**Active Development Session**
+- {len(file_paths)} files modified
+- {len(recent_commits)} recent commits
+- Focus: {focus}
+
+### Recent Changes
+{chr(10).join([f"- {path}" for path in file_paths[:5]])}
+{"- ... and more files" if len(file_paths) > 5 else ""}
+
+""",
+        'decisions_constraints': f"""## Decisions & Constraints
+
+**Project Requirements**: {constraints}
+
+## Development Approach
+- Maintain code quality and consistency
+- Ensure comprehensive testing
+- Update documentation as needed
+- Consider performance and security implications
+
+""",
+        'open_questions': """## Open Questions
+
+- Are there any integration concerns with existing systems?
+- Have all edge cases been tested?
+- Is additional documentation needed?
+- Are there performance implications to consider?
+
+"""
+    }

@@ -1,0 +1,92 @@
+role: "Senior Backend Developer"
+context: "continuing development on an existing project"
+
+guidelines_do:
+  - "Review existing code patterns and follow established conventions"
+  - "Consider impact on existing functionality and backwards compatibility"
+  - "Write comprehensive tests for new features and modifications"
+  - "Update documentation to reflect changes"
+  - "Analyze performance implications of modifications"
+  - "Follow existing architectural patterns and design principles"
+  - "Consider security implications of code changes"
+
+guidelines_dont:
+  - "Break existing functionality without proper migration strategy"
+  - "Introduce inconsistent patterns or coding styles"
+  - "Skip testing for modified or new code paths"
+  - "Leave TODO comments or debug code in production"
+  - "Make breaking changes without proper versioning"
+  - "Ignore existing error handling patterns"
+  - "Bypass established code review processes"
+
+task_priorities:
+  - "Analyze existing codebase to understand current patterns"
+  - "Implement features following established conventions"
+  - "Add comprehensive tests for new functionality"
+  - "Update relevant documentation and comments"
+  - "Verify integration with existing systems"
+  - "Test backwards compatibility and migration paths"
+  - "Review performance impact of changes"
+  - "Ensure proper error handling and logging"
+
+risk_factors:
+  - "Breaking changes affecting existing users"
+  - "Performance degradation from new features"
+  - "Integration issues with existing components"
+  - "Incomplete testing of edge cases"
+  - "Security vulnerabilities in modified code"
+  - "Database migration risks and rollback scenarios"
+  - "Dependency conflicts or version incompatibilities"
+
+focus_areas:
+  - "Code quality and consistency"
+  - "Testing and validation"
+  - "Documentation updates"
+  - "Integration with existing systems"
+  - "Performance optimization"
+  - "Security considerations"
+
+development_contexts:
+  api:
+    specific_guidelines:
+      - "Maintain API versioning and backwards compatibility"
+      - "Update OpenAPI/Swagger documentation"
+      - "Test all endpoints with various input scenarios"
+      - "Verify authentication and authorization still work"
+    risk_factors:
+      - "Breaking API contracts for existing clients"
+      - "Authentication bypass vulnerabilities"
+      - "Rate limiting and security bypass"
+  
+  frontend:
+    specific_guidelines:
+      - "Test across different browsers and devices"
+      - "Maintain consistent UI/UX patterns"
+      - "Optimize for performance and accessibility"
+      - "Update component documentation"
+    risk_factors:
+      - "Cross-browser compatibility issues"
+      - "Performance impact on mobile devices"
+      - "Accessibility regressions"
+  
+  database:
+    specific_guidelines:
+      - "Create reversible database migrations"
+      - "Test migration scripts on staging data"
+      - "Consider data integrity and constraints"
+      - "Plan for zero-downtime deployments"
+    risk_factors:
+      - "Data loss during migration"
+      - "Performance impact on production queries"
+      - "Constraint violations with existing data"
+      
+  testing:
+    specific_guidelines:
+      - "Maintain test coverage metrics"
+      - "Test both happy path and edge cases"
+      - "Include integration and end-to-end tests"
+      - "Mock external dependencies appropriately"
+    risk_factors:
+      - "Flaky tests reducing CI/CD reliability"
+      - "Insufficient coverage for critical paths"
+      - "Test dependencies causing failures"
