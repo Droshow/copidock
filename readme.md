@@ -160,3 +160,44 @@ copidock snapshot create --interactive --stage initial --comprehensive --hydrate
 
 # Empty structure only  
 copidock snapshot create --interactive --stage initial --hydrate
+
+## 15.10.2025 interesting auto detect stage idea to be considered
+
+## Stage Auto-Detection (Future Enhancement)
+
+### Concept
+Automatically detect whether project is in "initial" (greenfield/planning) or "development" (ongoing work) stage based on:
+- Git history depth (few commits = initial)  
+- File structure maturity (tests, docs, CI = development)
+- Project artifacts (package.json, requirements.txt = development)
+
+### Current Manual Control (Developer-Preferred)
+```bash
+# Explicit stage control - developers choose their workflow
+copidock snapshot create --interactive --stage initial --comprehensive --hydrate
+copidock snapshot create --interactive --stage development --comprehensive --hydrate
+```
+
+### Future Auto-Detection
+```bash  
+# Smart defaults with manual override capability
+copidock snapshot create --interactive --comprehensive --hydrate  # auto-detects
+copidock snapshot create --interactive --stage initial --comprehensive --hydrate  # manual override
+```
+
+### Developer Feedback Needed
+- Do devs want magic auto-detection or explicit control?
+- Is auto-detection helpful or confusing?
+- Should it be opt-in (`--auto-detect`) rather than default?
+
+### Implementation Notes
+- Detection logic in `detect_project_stage(file_paths, recent_commits, repo_root)`
+- Always allow manual `--stage` override
+- Clear feedback on what was detected and why
+- Fallback to development stage if uncertain
+
+### Priority: Low
+Developers prefer explicit workflow control. Current manual system works well.
+Focus on core functionality and persona templates first.
+
+**Postponed until user feedback requests it.**
