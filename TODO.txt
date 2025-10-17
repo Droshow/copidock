@@ -102,4 +102,11 @@ All using the same intelligent underlying system
 Your "Development Assistant as a Service" vision is essentially complete on the CLI side! The template system is intelligent, the CLI is comprehensive, and the architecture is clean.
 
 
+💡 Future Ideas (Post-Core)
+Tab completion for persona names
+Persona descriptions/help text
+Custom persona creation wizard
+Persona template inheritance (base → specialized)
 
+Implement multiline input support for --interactive mode in Copidock CLI.
+→ Replace typer.prompt() with a custom prompt_multiline() loop to allow bullet-style entries and blank-line submission.

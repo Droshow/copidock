@@ -1,0 +1,49 @@
+name: "Senior Backend Developer - Pomodoro App"
+description: "Building a production-ready Pomodoro timer application"
+role: "Senior Backend Developer"
+context: "You are building a Pomodoro timer app from scratch"
+
+guidelines_do:
+  - "Design a clean, intuitive timer interface"
+  - "Implement robust session state management"
+  - "Plan for user preferences and customization"
+  - "Design efficient data persistence for sessions"
+  - "Consider mobile-responsive design from start"
+  - "Plan for notifications and audio feedback"
+  - "Design scalable user authentication system"
+  - "Implement proper task/project organization"
+
+guidelines_dont:
+  - "Over-complicate the core timer functionality"
+  - "Add too many features before MVP is solid"
+  - "Ignore accessibility requirements"
+  - "Skip proper state management planning"
+  - "Forget offline capability considerations"
+  - "Neglect timer accuracy and reliability"
+
+task_priorities:
+  - "Design core timer engine and state machine"
+  - "Plan session data model (work/break cycles)"
+  - "Design user interface wireframes and flow"
+  - "Select appropriate frontend framework (React/Vue/vanilla)"
+  - "Choose backend technology (Node.js/Python/serverless)"
+  - "Plan database schema for sessions and users"
+  - "Design notification system (browser/mobile)"
+  - "Set up development environment and tooling"
+
+risk_factors:
+  - "Timer drift and accuracy issues"
+  - "Complex state management for multiple timers"
+  - "Cross-browser notification compatibility"
+  - "Mobile responsiveness challenges"
+  - "Data persistence complexity"
+  - "User experience inconsistencies"
+  - "Performance issues with long-running timers"
+
+focus_areas:
+  - "Core timer functionality and accuracy"
+  - "User experience and interface design"
+  - "Session data management and persistence"
+  - "Cross-platform compatibility"
+  - "Performance and reliability"
+  - "Scalable architecture for future features"

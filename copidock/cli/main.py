@@ -194,7 +194,7 @@ def snapshot_cmd(
         context = auto_detect_context(repo_root, since)
         
         # Interactive prompting with smart defaults
-        interactive_params = run_interactive_flow(context, persona, focus, output, constraints)
+        interactive_params = run_interactive_flow(context, persona, focus, output, constraints, detected_stage)
         
         # Use interactive parameters
         focus = interactive_params['focus']
@@ -203,7 +203,7 @@ def snapshot_cmd(
         persona = interactive_params['persona']
         
         # Show summary and confirm
-        if not confirm_snapshot_creation(interactive_params, context):
+        if not confirm_snapshot_creation(detected_stage, interactive_params, context):
             rprint("[yellow]Snapshot creation cancelled[/yellow]")
             raise typer.Exit(0)
 
