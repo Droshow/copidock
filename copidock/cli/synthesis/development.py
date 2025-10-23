@@ -21,7 +21,7 @@ def generate_development_stage_snapshot(thread_data, file_paths, recent_commits,
     try:
         rprint(f"[dim]🔍 Loading development template for: {persona}[/dim]")
         
-        persona_config = template_loader.load_persona(f"{persona}-development")
+        persona_config = template_loader.load_persona(f"{persona}")
         rprint(f"[green]✓ Successfully loaded development YML template[/green]")
         
         # DEBUG: Print development context analysis
@@ -51,7 +51,7 @@ def generate_development_stage_snapshot(thread_data, file_paths, recent_commits,
     except Exception as e:
         rprint(f"[red]❌ Could not load development template: {e}[/red]")
         rprint(f"[red]❌ NO FALLBACK - Template file must exist![/red]")
-        raise ValueError(f"Missing required template file: {persona}-development.yml")
+        raise ValueError(f"Missing required template file: {persona}")
 
 def synthesize_development_operator_instructions_with_template(enhanced_context, persona, persona_config, dev_context):
     """Generate development-focused operator instructions"""

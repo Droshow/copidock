@@ -12,6 +12,34 @@ bucket_name = os.environ['BUCKET_NAME']
 threads_table = dynamodb.Table(os.environ['DDB_THREADS'])
 chunks_table = dynamodb.Table(os.environ['DDB_CHUNKS_TABLE'])
 
+def generate_s3_key(stage, repo_name, timestamp, snapshot_id, snapshot_type='regular'):
+    """Generate structured S3 key with stage/project organization"""
+    short_id = snapshot_id[:8]  # First 8 chars of UUID
+    timestamp_str = timestamp.strftime('%Y%m%d-%H%M%S')
+    
+    # Clean repo name for S3 key (remove special chars)
+    clean_repo = repo_name.replace('/', '-').replace(' ', '-').lower()
+    
+    if snapshot_type == 'comprehensive':
+        return f"rehydrations/{stage}/{clean_repo}/{timestamp_str}-comprehensive-{short_id}.md"
+    else:
+        return f"rehydrations/{stage}/{clean_repo}/{timestamp_str}-{short_id}.md"
+
+def extract_stage_from_request(body, thread):
+    """Extract stage from request body or thread metadata"""
+    # Check request body first
+    stage = body.get('stage', '').strip()
+    if stage:
+        return stage
+    
+    # Check thread metadata
+    stage = thread.get('stage', '').strip()
+    if stage:
+        return stage
+    
+    # Default fallback
+    return 'development'
+
 def handler(event, context):
     """
     Handle both:
@@ -38,7 +66,7 @@ def handler(event, context):
 def handle_regular_snapshot(event, context):
     """
     POST /snapshot (existing logic)
-    Input: { thread_id, paths?, message? }
+    Input: { thread_id, paths?, message?, stage? }
     """
     try:
         # Parse request body
@@ -64,6 +92,10 @@ def handle_regular_snapshot(event, context):
             }
         
         thread = thread_response['Item']
+        
+        # Extract stage and repo information
+        stage = extract_stage_from_request(body, thread)
+        repo_name = thread.get('repo', 'unknown-project')
         
         # Generate snapshot metadata
         snapshot_id = str(uuid.uuid4())
@@ -93,8 +125,11 @@ def handle_regular_snapshot(event, context):
         # Gather sources from paths
         sources = gather_sources(thread_id, paths)
         
-        # Create S3 key
-        s3_key = f"threads/{thread_id}/{date_str}/snapshot-v{version:03d}.md"
+        # Create NEW S3 key structure
+        s3_key = generate_s3_key(stage, repo_name, timestamp, snapshot_id, 'regular')
+        
+        # Keep old key for backward compatibility in DynamoDB
+        old_s3_key = f"threads/{thread_id}/{date_str}/snapshot-v{version:03d}.md"
         
         # Generate rehydratable markdown
         markdown_content = generate_rehydratable_markdown(
@@ -106,7 +141,7 @@ def handle_regular_snapshot(event, context):
             message=message
         )
         
-        # Save to S3
+        # Save to S3 with new structure
         s3.put_object(
             Bucket=bucket_name,
             Key=s3_key,
@@ -117,11 +152,13 @@ def handle_regular_snapshot(event, context):
                 'snapshot-id': snapshot_id,
                 'version': str(version),
                 'created-at': timestamp.isoformat(),
-                'type': 'regular'
+                'type': 'regular',
+                'stage': stage,  # Add stage to metadata
+                'repo': repo_name
             }
         )
         
-        # Update thread with latest snapshot key
+        # Update thread with latest snapshot key (use new structure)
         threads_table.update_item(
             Key={'thread_id': thread_id},
             UpdateExpression='SET latest_snapshot_key = :key',
@@ -150,6 +187,7 @@ def handle_regular_snapshot(event, context):
                 'presigned_url': presigned_url,
                 'created_at': timestamp.isoformat() + 'Z',
                 'type': 'regular',
+                'stage': stage,
                 'sources_count': len(sources)
             })
         }
@@ -171,7 +209,7 @@ def handle_regular_snapshot(event, context):
 def handle_comprehensive_snapshot(event, context):
     """
     POST /snapshot/comprehensive (new)
-    Input: { thread_id, inline_sources, synth, message? }
+    Input: { thread_id, inline_sources, synth, message?, stage? }
     """
     try:
         # Parse request body
@@ -199,6 +237,10 @@ def handle_comprehensive_snapshot(event, context):
         
         thread = thread_response['Item']
         
+        # Extract stage and repo information
+        stage = extract_stage_from_request(body, thread)
+        repo_name = thread.get('repo', 'unknown-project')
+        
         # Generate snapshot metadata
         snapshot_id = str(uuid.uuid4())
         timestamp = datetime.utcnow()
@@ -224,8 +266,11 @@ def handle_comprehensive_snapshot(event, context):
                 'body': json.dumps({'error': 'Failed to create snapshot version'})
             }
         
-        # Create S3 key for comprehensive snapshot
-        s3_key = f"threads/{thread_id}/{date_str}/comprehensive-v{version:03d}.md"
+        # Create NEW S3 key structure for comprehensive snapshot
+        s3_key = generate_s3_key(stage, repo_name, timestamp, snapshot_id, 'comprehensive')
+        
+        # Keep old key for backward compatibility in DynamoDB
+        old_s3_key = f"threads/{thread_id}/{date_str}/comprehensive-v{version:03d}.md"
         
         # Generate comprehensive rehydratable markdown
         markdown_content = generate_comprehensive_markdown(
@@ -238,7 +283,7 @@ def handle_comprehensive_snapshot(event, context):
             message=message
         )
         
-        # Save to S3
+        # Save to S3 with new structure
         s3.put_object(
             Bucket=bucket_name,
             Key=s3_key,
@@ -249,11 +294,13 @@ def handle_comprehensive_snapshot(event, context):
                 'snapshot-id': snapshot_id,
                 'version': str(version),
                 'created-at': timestamp.isoformat(),
-                'type': 'comprehensive'
+                'type': 'comprehensive',
+                'stage': stage,  # Add stage to metadata
+                'repo': repo_name
             }
         )
         
-        # Update thread with latest snapshot key
+        # Update thread with latest snapshot key (use new structure)
         threads_table.update_item(
             Key={'thread_id': thread_id},
             UpdateExpression='SET latest_snapshot_key = :key',
@@ -282,6 +329,7 @@ def handle_comprehensive_snapshot(event, context):
                 'presigned_url': presigned_url,
                 'created_at': timestamp.isoformat() + 'Z',
                 'type': 'comprehensive',
+                'stage': stage,
                 'sources_count': len(inline_sources),
                 'synthesis_sections': list(synth_sections.keys())
             })

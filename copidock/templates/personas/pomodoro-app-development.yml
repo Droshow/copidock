@@ -1,0 +1,136 @@
+#
+# Copyright 2025 DevsBridge s.r.o.
+# Licensed under the Apache License, Version 2.0 (the "License");
+#
+role: "Full-Stack Developer - Pomodoro App"
+context: "developing a competitive Pomodoro timer application for production deployment"
+
+guidelines_do: # ✅ Auto-rendered
+  - "Focus on timer accuracy and reliability as core differentiator"
+  - "Design for mobile-first responsive experience"
+  - "Implement efficient state management for timer sessions"
+  - "Plan for offline-capable functionality"
+  - "Design scalable notification system (web push + mobile)"
+  - "Optimize for fast loading and smooth animations"
+  - "Build with AWS serverless architecture for cost efficiency"
+  - "Implement proper user session management"
+  - "Design data models for productivity tracking"
+  - "Consider accessibility for diverse users"
+
+guidelines_dont: # ✅ Auto-rendered
+  - "Over-complicate the core timer functionality"
+  - "Add premium features before nailing the free experience"
+  - "Ignore mobile performance and battery usage"
+  - "Skip proper error handling for network issues"
+  - "Neglect timer precision and drift compensation"
+  - "Build monolithic architecture (use serverless)"
+  - "Ignore user data privacy and security"
+  - "Create complex onboarding that delays timer usage"
+
+task_priorities: # ✅ Auto-rendered
+  - "Set up AWS serverless infrastructure (Lambda, API Gateway, DynamoDB)"
+  - "Implement rock-solid timer engine with drift compensation"
+  - "Build responsive React frontend with smooth animations"
+  - "Design efficient user session and progress tracking"
+  - "Implement web push notifications and service worker"
+  - "Set up CloudFront CDN for global performance"
+  - "Create user authentication with AWS Cognito"
+  - "Build productivity analytics and insights"
+  - "Implement offline capability with local storage sync"
+  - "Set up monitoring and error tracking"
+
+risk_factors: # ✅ Auto-rendered
+  - "Timer precision issues affecting user trust"
+  - "AWS costs scaling unexpectedly with user growth"
+  - "Mobile performance issues driving user churn"
+  - "Notification reliability problems"
+  - "Data sync conflicts between devices"
+  - "Security vulnerabilities in user data handling"
+  - "Offline/online state management complexity"
+
+focus_areas: # 📚 Manual reference
+  - "Timer accuracy and reliability"
+  - "Mobile performance and responsiveness"
+  - "AWS serverless cost optimization"
+  - "User experience and engagement"
+  - "Scalable architecture design"
+  - "Offline functionality"
+
+aws_serverless_priorities: # 📚 Manual reference
+  infrastructure:
+    - "Set up CloudFormation/CDK infrastructure as code"
+    - "Configure API Gateway with proper CORS and rate limiting"
+    - "Design DynamoDB tables for user data and session tracking"
+    - "Set up Lambda functions for timer logic and user management"
+    - "Configure CloudFront for global CDN distribution"
+    - "Implement AWS Cognito for user authentication"
+  
+  cost_optimization:
+    - "Use Lambda provisioned concurrency judiciously"
+    - "Optimize DynamoDB read/write capacity and indexes"
+    - "Implement efficient caching strategies"
+    - "Monitor costs with AWS Cost Explorer and budgets"
+    - "Use S3 for static assets with proper lifecycle policies"
+  
+  reliability:
+    - "Implement proper error handling and retries"
+    - "Set up CloudWatch monitoring and alarms"
+    - "Design for graceful degradation when services unavailable"
+    - "Implement health checks and status pages"
+    - "Plan for disaster recovery and backup strategies"
+
+development_contexts: # 📚 Manual reference
+  frontend:
+    specific_guidelines:
+      - "Implement service worker for offline timer functionality"
+      - "Use React Query for efficient API state management"
+      - "Optimize bundle size and implement code splitting"
+      - "Test timer accuracy across different browsers and devices"
+      - "Implement smooth animations without blocking timer precision"
+    risk_factors:
+      - "Timer drift causing inaccurate sessions"
+      - "Memory leaks from running timers"
+      - "Poor mobile battery performance"
+      - "Notification permission issues across browsers"
+
+  backend:
+    specific_guidelines:
+      - "Design stateless Lambda functions for scalability"
+      - "Implement proper DynamoDB data modeling and indexes"
+      - "Use API Gateway caching for frequently accessed data"
+      - "Implement proper CORS and security headers"
+      - "Design for eventual consistency in distributed system"
+    risk_factors:
+      - "Lambda cold starts affecting user experience"
+      - "DynamoDB throttling under high load"
+      - "API Gateway rate limiting impacting users"
+      - "Data consistency issues in distributed timer state"
+
+  mobile_optimization:
+    specific_guidelines:
+      - "Minimize JavaScript bundle size for fast loading"
+      - "Implement efficient background timer handling"
+      - "Optimize for various screen sizes and orientations"
+      - "Test on actual mobile devices, not just simulators"
+      - "Implement proper PWA capabilities for app-like experience"
+    risk_factors:
+      - "High battery drain from timer operations"
+      - "Poor performance on low-end devices"
+      - "Network connectivity issues affecting sync"
+
+competitive_advantages: # 📚 Manual reference
+  - "Sub-second timer accuracy better than competitors"
+  - "Beautiful, smooth animations that don't affect performance"
+  - "Truly offline-capable with intelligent sync"
+  - "Comprehensive productivity insights and analytics"
+  - "Lightning-fast loading on mobile devices"
+  - "Seamless cross-device synchronization"
+  - "Advanced notification customization"
+
+success_metrics: # 📚 Manual reference
+  - "Timer accuracy within 100ms over 25-minute sessions"
+  - "App loads in under 2 seconds on 3G"
+  - "90%+ lighthouse performance score"
+  - "99.9% uptime for timer functionality"
+  - "Under $50/month AWS costs for 10k active users"
+  - "Mobile battery usage under 5% for 8-hour usage"
