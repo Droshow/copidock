@@ -97,15 +97,21 @@ class CopidockAPI:
         response.raise_for_status()
         return response.json()
     
-    def create_comprehensive_snapshot(self, thread_id: str, inline_sources: List[dict], 
-                                    synth_sections: dict, message: str = "") -> Dict[str, Any]:
+    def create_comprehensive_snapshot(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Create comprehensive snapshot with synthesized sections"""
-        payload = {
-            "thread_id": thread_id,
-            "message": message,
-            "inline_sources": inline_sources,
-            "synth": synth_sections
-        }
+        # payload = {
+        #     "thread_id": thread_id,
+        #     "message": message,
+        #     "inline_sources": inline_sources,
+        #     "synth": synth_sections
+        # }
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a dict")
+        if not payload.get("thread_id"):
+            raise ValueError("payload.thread_id is required")
+        if "synth" not in payload:
+            raise ValueError("payload.synth is required")
+        
         response = requests.post(
             f"{self.api_base}/snapshot/comprehensive",
             headers=self._headers(),
@@ -114,6 +120,33 @@ class CopidockAPI:
         )
         response.raise_for_status()
         return response.json()
+    
+    def create_comprehensive_snapshot_vargs(
+        self,
+        thread_id: str,
+        inline_sources: list,
+        synth_sections: Dict[str, Any],
+        message: str = "",
+        stage: Optional[str] = None,
+        repo: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "thread_id": thread_id,
+            "synth": synth_sections,
+            "inline_sources": inline_sources or [],
+            "message": message,
+        }
+        if stage: payload["stage"] = stage
+        if repo:  payload["repo"]  = repo
+        response = requests.post(
+            f"{self.api_base}/snapshot/comprehensive",
+            headers=self._headers(),
+            json=payload,
+            timeout=self.timeout
+        )
+        response.raise_for_status()
+        return response.json()
+    
     # In your api.py file, add this method to the CopidockAPI class:
 
     def hydrate_snapshot(self, thread_id: str, markdown_content: str, metadata: dict) -> dict:

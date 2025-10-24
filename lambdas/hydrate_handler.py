@@ -114,3 +114,98 @@ def handler(event, context):
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Internal server error'})
         }
+# hydrate_handler.py
+import json, os, uuid
+from datetime import datetime
+import boto3
+
+s3 = boto3.client('s3')
+dynamodb = boto3.resource('dynamodb')
+
+BUCKET = os.environ['BUCKET_NAME']
+THREADS = dynamodb.Table(os.environ['DDB_THREADS'])
+
+def _clean_repo(name: str) -> str:
+    if not name:
+        return "current-project"
+    name = name.strip().lower().replace('.git', '')
+    for ch in ('/', ' ', '\\'):
+        name = name.replace(ch, '-')
+    return name or "current-project"
+
+def _stage(s: str) -> str:
+    s = (s or '').strip().lower()
+    return s if s in ('initial', 'development') else 'development'
+
+def _s3_key(stage: str, repo: str, ts: datetime, rehyd_id: str) -> str:
+    short = rehyd_id[:8]
+    stamp = ts.strftime('%Y%m%d-%H%M%S')
+    # Hydration always stores a full markdown artifact (comprehensive-like)
+    return f"rehydrations/{stage}/{repo}/{stamp}-comprehensive-{short}.md"
+
+def handler(event, context):
+    # POST /snapshots/{thread_id}/hydrate
+    body = json.loads(event.get('body') or '{}')
+    path_params = event.get('pathParameters') or {}
+    thread_id = (path_params.get('thread_id') or body.get('thread_id') or '').strip()
+
+    if not thread_id:
+        return _bad(400, "thread_id is required")
+
+    # Fetch thread for fallback values
+    t = THREADS.get_item(Key={'thread_id': thread_id}).get('Item', {}) or {}
+
+    # Extract metadata from payload (preferred) or thread
+    meta = body.get('metadata') or {}
+    stage = _stage(meta.get('stage') or t.get('stage'))
+    repo  = _clean_repo(meta.get('repo') or t.get('repo'))
+
+    md = body.get('markdown_content') or ''
+    if not md.strip():
+        return _bad(400, "markdown_content is required")
+
+    rehyd_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+    key = _s3_key(stage, repo, now, rehyd_id)
+
+    s3.put_object(
+        Bucket=BUCKET,
+        Key=key,
+        Body=md.encode('utf-8'),
+        ContentType='text/markdown',
+        Metadata={
+            'thread-id': thread_id,
+            'rehydration-id': rehyd_id,
+            'stage': stage,
+            'repo': repo
+        }
+    )
+
+    # Optionally store the last hydrated key on the thread
+    THREADS.update_item(
+        Key={'thread_id': thread_id},
+        UpdateExpression='SET latest_snapshot_key = :k, updated_at = :u, stage = :s, repo = :r',
+        ExpressionAttributeValues={
+            ':k': key, ':u': now.isoformat()+'Z', ':s': stage, ':r': repo
+        }
+    )
+
+    url = s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET, 'Key': key}, ExpiresIn=1800)
+
+    return _ok({
+        'rehydration_id': rehyd_id,
+        'thread_id': thread_id,
+        's3_key': key,
+        'presigned_url': url,
+        'stage': stage,
+        'repo': repo
+    })
+
+def _ok(body):  return {'statusCode': 200, 'headers': _h(), 'body': json.dumps(body)}
+def _bad(c,m):  return {'statusCode': c,   'headers': _h(), 'body': json.dumps({'error': m})}
+def _h():
+    return {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
+    }

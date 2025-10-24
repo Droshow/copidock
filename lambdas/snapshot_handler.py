@@ -1,482 +1,173 @@
-import json
-import boto3
-import os
-import uuid
+import json, os, uuid
 from datetime import datetime
-from botocore.exceptions import ClientError
+import boto3
 
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 
-bucket_name = os.environ['BUCKET_NAME']
-threads_table = dynamodb.Table(os.environ['DDB_THREADS'])
-chunks_table = dynamodb.Table(os.environ['DDB_CHUNKS_TABLE'])
-
-def generate_s3_key(stage, repo_name, timestamp, snapshot_id, snapshot_type='regular'):
-    """Generate structured S3 key with stage/project organization"""
-    short_id = snapshot_id[:8]  # First 8 chars of UUID
-    timestamp_str = timestamp.strftime('%Y%m%d-%H%M%S')
-    
-    # Clean repo name for S3 key (remove special chars)
-    clean_repo = repo_name.replace('/', '-').replace(' ', '-').lower()
-    
-    if snapshot_type == 'comprehensive':
-        return f"rehydrations/{stage}/{clean_repo}/{timestamp_str}-comprehensive-{short_id}.md"
-    else:
-        return f"rehydrations/{stage}/{clean_repo}/{timestamp_str}-{short_id}.md"
-
-def extract_stage_from_request(body, thread):
-    """Extract stage from request body or thread metadata"""
-    # Check request body first
-    stage = body.get('stage', '').strip()
-    if stage:
-        return stage
-    
-    # Check thread metadata
-    stage = thread.get('stage', '').strip()
-    if stage:
-        return stage
-    
-    # Default fallback
-    return 'development'
+BUCKET = os.environ['BUCKET_NAME']
+THREADS = dynamodb.Table(os.environ['DDB_THREADS'])
 
 def handler(event, context):
-    """
-    Handle both:
-    POST /snapshot (existing)
-    POST /snapshot/comprehensive (new)
-    """
     try:
-        # Check the path to determine which handler to use
-        path = event.get('path', '')
-        
+        path = (event.get('rawPath') or event.get('path') or '').lower()
         if path.endswith('/comprehensive'):
-            return handle_comprehensive_snapshot(event, context)
-        else:
-            return handle_regular_snapshot(event, context)
-            
+            return _handle_comprehensive(event)
+        return _handle_regular(event)
     except Exception as e:
-        print(f"Error in snapshot handler: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Internal server error'})
-        }
+        print(f"Error in snapshot handler: {e}")
+        return _bad(500, "Internal server error")
 
-def handle_regular_snapshot(event, context):
-    """
-    POST /snapshot (existing logic)
-    Input: { thread_id, paths?, message?, stage? }
-    """
-    try:
-        # Parse request body
-        body = json.loads(event.get('body', '{}'))
-        thread_id = body.get('thread_id', '').strip()
-        paths = body.get('paths', [])
-        message = body.get('message', '')
-        
-        if not thread_id:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'thread_id is required'})
-            }
-        
-        # Get thread details
-        thread_response = threads_table.get_item(Key={'thread_id': thread_id})
-        if 'Item' not in thread_response:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Thread not found'})
-            }
-        
-        thread = thread_response['Item']
-        
-        # Extract stage and repo information
-        stage = extract_stage_from_request(body, thread)
-        repo_name = thread.get('repo', 'unknown-project')
-        
-        # Generate snapshot metadata
-        snapshot_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow()
-        date_str = timestamp.strftime('%Y-%m-%d')
-        
-        # Atomically increment snapshot_count
-        try:
-            update_response = threads_table.update_item(
-                Key={'thread_id': thread_id},
-                UpdateExpression='ADD snapshot_count :inc SET updated_at = :updated',
-                ExpressionAttributeValues={
-                    ':inc': 1,
-                    ':updated': timestamp.isoformat() + 'Z'
-                },
-                ReturnValues='ALL_NEW'
-            )
-            version = int(update_response['Attributes']['snapshot_count'])
-        except Exception as e:
-            print(f"Error incrementing snapshot count: {e}")
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Failed to create snapshot version'})
-            }
-        
-        # Gather sources from paths
-        sources = gather_sources(thread_id, paths)
-        
-        # Create NEW S3 key structure
-        s3_key = generate_s3_key(stage, repo_name, timestamp, snapshot_id, 'regular')
-        
-        # Keep old key for backward compatibility in DynamoDB
-        old_s3_key = f"threads/{thread_id}/{date_str}/snapshot-v{version:03d}.md"
-        
-        # Generate rehydratable markdown
-        markdown_content = generate_rehydratable_markdown(
-            thread=thread,
-            sources=sources,
-            snapshot_id=snapshot_id,
-            timestamp=timestamp,
-            version=version,
-            message=message
-        )
-        
-        # Save to S3 with new structure
-        s3.put_object(
-            Bucket=bucket_name,
-            Key=s3_key,
-            Body=markdown_content.encode('utf-8'),
-            ContentType='text/markdown',
-            Metadata={
-                'thread-id': thread_id,
-                'snapshot-id': snapshot_id,
-                'version': str(version),
-                'created-at': timestamp.isoformat(),
-                'type': 'regular',
-                'stage': stage,  # Add stage to metadata
-                'repo': repo_name
-            }
-        )
-        
-        # Update thread with latest snapshot key (use new structure)
-        threads_table.update_item(
-            Key={'thread_id': thread_id},
-            UpdateExpression='SET latest_snapshot_key = :key',
-            ExpressionAttributeValues={':key': s3_key}
-        )
-        
-        # Generate presigned URL
-        presigned_url = s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket_name, 'Key': s3_key},
-            ExpiresIn=1800
-        )
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
-            },
-            'body': json.dumps({
-                'snapshot_id': snapshot_id,
-                'thread_id': thread_id,
-                'version': version,
-                's3_key': s3_key,
-                'presigned_url': presigned_url,
-                'created_at': timestamp.isoformat() + 'Z',
-                'type': 'regular',
-                'stage': stage,
-                'sources_count': len(sources)
-            })
-        }
-        
-    except json.JSONDecodeError:
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Invalid JSON in request body'})
-        }
-    except Exception as e:
-        print(f"Error creating snapshot: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Internal server error'})
-        }
 
-def handle_comprehensive_snapshot(event, context):
-    """
-    POST /snapshot/comprehensive (new)
-    Input: { thread_id, inline_sources, synth, message?, stage? }
-    """
-    try:
-        # Parse request body
-        body = json.loads(event.get('body', '{}'))
-        thread_id = body.get('thread_id', '').strip()
-        inline_sources = body.get('inline_sources', [])
-        synth_sections = body.get('synth', {})
-        message = body.get('message', '')
-        
-        if not thread_id:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'thread_id is required'})
-            }
-        
-        # Get thread details
-        thread_response = threads_table.get_item(Key={'thread_id': thread_id})
-        if 'Item' not in thread_response:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Thread not found'})
-            }
-        
-        thread = thread_response['Item']
-        
-        # Extract stage and repo information
-        stage = extract_stage_from_request(body, thread)
-        repo_name = thread.get('repo', 'unknown-project')
-        
-        # Generate snapshot metadata
-        snapshot_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow()
-        date_str = timestamp.strftime('%Y-%m-%d')
-        
-        # Atomically increment snapshot_count
-        try:
-            update_response = threads_table.update_item(
-                Key={'thread_id': thread_id},
-                UpdateExpression='ADD snapshot_count :inc SET updated_at = :updated',
-                ExpressionAttributeValues={
-                    ':inc': 1,
-                    ':updated': timestamp.isoformat() + 'Z'
-                },
-                ReturnValues='ALL_NEW'
-            )
-            version = int(update_response['Attributes']['snapshot_count'])
-        except Exception as e:
-            print(f"Error incrementing snapshot count: {e}")
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'Failed to create snapshot version'})
-            }
-        
-        # Create NEW S3 key structure for comprehensive snapshot
-        s3_key = generate_s3_key(stage, repo_name, timestamp, snapshot_id, 'comprehensive')
-        
-        # Keep old key for backward compatibility in DynamoDB
-        old_s3_key = f"threads/{thread_id}/{date_str}/comprehensive-v{version:03d}.md"
-        
-        # Generate comprehensive rehydratable markdown
-        markdown_content = generate_comprehensive_markdown(
-            thread=thread,
-            inline_sources=inline_sources,
-            synth_sections=synth_sections,
-            snapshot_id=snapshot_id,
-            timestamp=timestamp,
-            version=version,
-            message=message
-        )
-        
-        # Save to S3 with new structure
-        s3.put_object(
-            Bucket=bucket_name,
-            Key=s3_key,
-            Body=markdown_content.encode('utf-8'),
-            ContentType='text/markdown',
-            Metadata={
-                'thread-id': thread_id,
-                'snapshot-id': snapshot_id,
-                'version': str(version),
-                'created-at': timestamp.isoformat(),
-                'type': 'comprehensive',
-                'stage': stage,  # Add stage to metadata
-                'repo': repo_name
-            }
-        )
-        
-        # Update thread with latest snapshot key (use new structure)
-        threads_table.update_item(
-            Key={'thread_id': thread_id},
-            UpdateExpression='SET latest_snapshot_key = :key',
-            ExpressionAttributeValues={':key': s3_key}
-        )
-        
-        # Generate presigned URL
-        presigned_url = s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket_name, 'Key': s3_key},
-            ExpiresIn=1800
-        )
-        
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
-            },
-            'body': json.dumps({
-                'snapshot_id': snapshot_id,
-                'thread_id': thread_id,
-                'version': version,
-                's3_key': s3_key,
-                'presigned_url': presigned_url,
-                'created_at': timestamp.isoformat() + 'Z',
-                'type': 'comprehensive',
-                'stage': stage,
-                'sources_count': len(inline_sources),
-                'synthesis_sections': list(synth_sections.keys())
-            })
-        }
-        
-    except json.JSONDecodeError:
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Invalid JSON in request body'})
-        }
-    except Exception as e:
-        print(f"Error creating comprehensive snapshot: {str(e)}")
-        return {
-            'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Internal server error'})
-        }
+def _clean_repo(name: str) -> str:
+    if not name:
+        return "current-project"
+    name = name.strip().lower().replace('.git', '')
+    for ch in ('/', ' ', '\\'):
+        name = name.replace(ch, '-')
+    return name or "current-project"
 
-def gather_sources(thread_id, paths):
-    """Gather source content from various sources"""
-    sources = []
-    
-    if paths:
-        # Handle file paths (existing functionality)
-        for path in paths[:20]:  # Limit to prevent oversized payloads
-            sources.append({
-                'type': 'file_path',
-                'path': path,
-                'content': f"File path: {path}"
-            })
-    
-    return sources
+def _stage(s: str) -> str:
+    s = (s or '').strip().lower()
+    return s if s in ('initial', 'development') else 'development'
 
-def generate_rehydratable_markdown(thread, sources, snapshot_id, timestamp, version, message=""):
-    """Generate regular rehydratable markdown (existing functionality)"""
-    iso_timestamp = timestamp.isoformat() + 'Z'
-    
-    goal = thread.get('goal', 'development task')
-    repo = thread.get('repo', 'unknown')
-    branch = thread.get('branch', 'main')
-    
-    content = f"""---
-thread_id: {thread['thread_id']}
+def _s3_key(stage: str, repo: str, ts: datetime, snap_id: str, kind: str) -> str:
+    short = snap_id[:8]
+    stamp = ts.strftime('%Y%m%d-%H%M%S')
+    if kind == 'comprehensive':
+        return f"rehydrations/{stage}/{repo}/{stamp}-comprehensive-{short}.md"
+    return f"rehydrations/{stage}/{repo}/{stamp}-{short}.md"
+
+def handler(event, context):
+    path = (event.get('rawPath') or event.get('path') or '').lower()
+    if path.endswith('/comprehensive'):
+        return _handle_comprehensive(event)
+    return _handle_regular(event)
+
+def _handle_regular(event):
+    body = json.loads(event.get('body') or '{}')
+    thread_id = (body.get('thread_id') or '').strip()
+    if not thread_id:
+        return _bad(400, "thread_id is required")
+
+    # Fetch thread (for fallback values)
+    t = THREADS.get_item(Key={'thread_id': thread_id}).get('Item', {})
+    stage = _stage(body.get('stage') or t.get('stage'))
+    repo  = _clean_repo(body.get('repo') or t.get('repo'))
+
+    snap_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+    md = _minimal_markdown(thread=t, snapshot_id=snap_id, created_at=now, message=body.get('message', ''))
+
+    key = _s3_key(stage, repo, now, snap_id, 'regular')
+    s3.put_object(
+        Bucket=BUCKET, Key=key, Body=md.encode('utf-8'),
+        ContentType='text/markdown',
+        Metadata={'thread-id': thread_id, 'snapshot-id': snap_id, 'type': 'regular', 'stage': stage, 'repo': repo}
+    )
+
+    # optional: update thread latest key
+    THREADS.update_item(
+        Key={'thread_id': thread_id},
+        UpdateExpression='SET latest_snapshot_key = :k, updated_at = :u, stage = :s, repo = :r',
+        ExpressionAttributeValues={':k': key, ':u': now.isoformat()+'Z', ':s': stage, ':r': repo}
+    )
+
+    url = s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET, 'Key': key}, ExpiresIn=1800)
+    return _ok({
+        'snapshot_id': snap_id,
+        'thread_id': thread_id,
+        's3_key': key,
+        'presigned_url': url,
+        'type': 'regular',
+        'stage': stage,
+        'repo': repo
+    })
+
+def _handle_comprehensive(event):
+    body = json.loads(event.get('body') or '{}')
+    thread_id = (body.get('thread_id') or '').strip()
+    if not thread_id:
+        return _bad(400, "thread_id is required")
+
+    t = THREADS.get_item(Key={'thread_id': thread_id}).get('Item', {})
+    stage = _stage(body.get('stage') or t.get('stage'))
+    repo  = _clean_repo(body.get('repo') or t.get('repo'))
+
+    snap_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+
+    # Build comprehensive markdown: synth + sources (simplified)
+    synth = body.get('synth') or {}
+    sources = body.get('inline_sources') or []
+    md = _comprehensive_markdown(t, synth, sources, snap_id, now, body.get('message', ''))
+
+    key = _s3_key(stage, repo, now, snap_id, 'comprehensive')
+    s3.put_object(
+        Bucket=BUCKET, Key=key, Body=md.encode('utf-8'),
+        ContentType='text/markdown',
+        Metadata={'thread-id': thread_id, 'snapshot-id': snap_id, 'type': 'comprehensive', 'stage': stage, 'repo': repo}
+    )
+
+    THREADS.update_item(
+        Key={'thread_id': thread_id},
+        UpdateExpression='SET latest_snapshot_key = :k, updated_at = :u, stage = :s, repo = :r',
+        ExpressionAttributeValues={':k': key, ':u': now.isoformat()+'Z', ':s': stage, ':r': repo}
+    )
+
+    url = s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET, 'Key': key}, ExpiresIn=1800)
+    return _ok({
+        'snapshot_id': snap_id,
+        'thread_id': thread_id,
+        's3_key': key,
+        'presigned_url': url,
+        'type': 'comprehensive',
+        'stage': stage,
+        'repo': repo,
+        'sources_count': len(sources),
+        'synth_keys': list(synth.keys())
+    })
+
+def _minimal_markdown(thread, snapshot_id, created_at, message):
+    return f"""---
+thread_id: {thread.get('thread_id','')}
 snapshot_id: {snapshot_id}
-version: {version}
-created_at: {iso_timestamp}
-repo: {repo}
-branch: {branch}
-goal: "{goal}"
-context_tags: ["snapshot"]
-token_budget_hint: 4k
+version: 1
+created_at: {created_at.isoformat()}Z
+repo: {thread.get('repo','')}
+branch: {thread.get('branch','main')}
+goal: "{thread.get('goal','')}"
 ---
 
-# Rehydrate: {thread.get('thread_name', 'Development Thread')} (v{version})
+# Rehydrate: {thread.get('thread_name','Thread')}
 
-"""
-    
-    if message:
-        content += f"**Message:** {message}\n\n"
-    
-    content += "## Operator Instructions\n\n"
-    content += f"You are working on: {goal}\n\n"
-    
-    content += "## Current State\n\n"
-    content += f"Thread: {thread['thread_id']}\n"
-    content += f"Repository: {repo}\n"
-    content += f"Branch: {branch}\n\n"
-    
-    if sources:
-        content += "## Sources\n\n"
-        for i, source in enumerate(sources, 1):
-            content += f"### Source {i}: {source.get('path', 'unknown')}\n\n"
-            content += f"{source.get('content', 'No content available')}\n\n"
-    
-    return content
-
-def generate_comprehensive_markdown(thread, inline_sources, synth_sections, snapshot_id, timestamp, version, message=""):
-    """Generate comprehensive rehydratable markdown with synthesis sections"""
-    
-    iso_timestamp = timestamp.isoformat() + 'Z'
-    
-    goal = thread.get('goal', 'development task')
-    repo = thread.get('repo', 'unknown')
-    branch = thread.get('branch', 'main')
-    
-    # Extract file paths for related_paths
-    related_paths = [source['path'] for source in inline_sources[:10]]  # Limit to first 10
-    
-    content = f"""---
-thread_id: {thread['thread_id']}
-snapshot_id: {snapshot_id}
-version: {version}
-created_at: {iso_timestamp}
-repo: {repo}
-branch: {branch}
-goal: "{goal}"
-context_tags: ["snapshot","rehydration","comprehensive"]
-related_paths:"""
-
-    # Add related paths as YAML list
-    for path in related_paths:
-        content += f"\n  - {path}"
-    
-    content += f"""
-token_budget_hint: 6k
----
-
-# Rehydrate: {thread.get('thread_name', 'Development Thread')} (v{version})
-
+{f"**Message:** {message}" if message else ""}
 """
 
-    # Add message if provided
-    if message:
-        content += f"**Message:** {message}\n\n"
-    
-    # Add synthesized sections
-    if synth_sections.get('operator_instructions'):
-        content += synth_sections['operator_instructions'] + "\n\n"
-    
-    if synth_sections.get('current_state'):
-        content += synth_sections['current_state'] + "\n\n"
-    
-    if synth_sections.get('decisions_constraints'):
-        content += synth_sections['decisions_constraints'] + "\n\n"
-    
-    if synth_sections.get('open_questions'):
-        content += synth_sections['open_questions'] + "\n\n"
-    
-    # Add sources section
-    content += "## Sources\n\n"
-    
-    for i, source in enumerate(inline_sources, 1):
-        path = source.get('path', f'source-{i}')
-        language = source.get('language', 'text')
-        source_content = source.get('content', '')
-        
-        content += f"### Source {i}: {path}\n\n"
-        content += f"````{language}\n"
-        content += f"// filepath: {path}\n"
-        content += source_content
-        content += "\n````\n\n"
-    
-    # Add footer
-    content += """---
+def _comprehensive_markdown(thread, synth, sources, snapshot_id, created_at, message):
+    header = _minimal_markdown(thread, snapshot_id, created_at, message)
+    parts = [header]
+    if synth.get('operator_instructions'): parts.append(synth['operator_instructions'])
+    if synth.get('current_state'): parts.append(synth['current_state'])
+    if synth.get('decisions_constraints'): parts.append(synth['decisions_constraints'])
+    if synth.get('open_questions'): parts.append(synth['open_questions'])
+    parts.append("## Sources\n")
+    for i, s in enumerate(sources, 1):
+        path = s.get('path', f'source-{i}')
+        lang = s.get('language', 'text')
+        content = s.get('content', '')
+        parts.append(f"### Source {i}: {path}\n\n````{lang}\n// filepath: {path}\n{content}\n````\n")
+    return "\n".join(parts)
 
-*This is a comprehensive rehydratable snapshot with auto-generated synthesis sections. It contains the context, analysis, and state needed to continue this development thread.*
-"""
+def _ok(body: dict):
+    return {'statusCode': 200, 'headers': _h(), 'body': json.dumps(body)}
 
-    return content
+def _bad(code: int, msg: str):
+    return {'statusCode': code, 'headers': _h(), 'body': json.dumps({'error': msg})}
+
+def _h():
+    return {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key'
+    }

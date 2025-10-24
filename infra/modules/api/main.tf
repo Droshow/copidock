@@ -1,5 +1,8 @@
 locals {
   api_routes = {
+    # --------------------------
+    # NOTES
+    # --------------------------
     post_notes = {
       route_key   = "POST /notes"
       lambda_key  = "notes"
@@ -10,33 +13,44 @@ locals {
       lambda_key  = "notes"
       description = "Retrieve stored notes"
     }
+
+    # --------------------------
+    # THREAD MANAGEMENT
+    # --------------------------
     post_thread_start = {
       route_key   = "POST /thread/start"
       lambda_key  = "thread_start"
       description = "Start a new decision thread"
     }
+
+    # --------------------------
+    # SNAPSHOTS (regular + comprehensive)
+    # --------------------------
     post_snapshot = {
       route_key   = "POST /snapshot"
       lambda_key  = "snapshot"
       description = "Create thread context snapshot"
     }
-    get_rehydrate = {
-      route_key   = "GET /rehydrate/{thread_id}/latest"
-      lambda_key  = "rehydrate"
-      description = "Get latest thread snapshot"
+    options_snapshot = {
+      route_key   = "OPTIONS /snapshot"
+      lambda_key  = "snapshot"
+      description = "CORS preflight for snapshot"
     }
-    # Add comprehensive routes to the main api_routes
+
     post_snapshot_comprehensive = {
       route_key   = "POST /snapshot/comprehensive"
-      lambda_key  = "snapshot" # Same lambda as regular snapshot
+      lambda_key  = "snapshot"
       description = "Create comprehensive thread snapshot with synthesis"
     }
     options_snapshot_comprehensive = {
       route_key   = "OPTIONS /snapshot/comprehensive"
-      lambda_key  = "snapshot" # Same lambda as regular snapshot
-      description = "CORS preflight for comprehensive snapshots"
+      lambda_key  = "snapshot"
+      description = "CORS preflight for comprehensive snapshot"
     }
-    # ADD THESE NEW HYDRATION ROUTES
+
+    # --------------------------
+    # SNAPSHOT HYDRATION & REHYDRATION
+    # --------------------------
     post_snapshots_hydrate = {
       route_key   = "POST /snapshots/{thread_id}/hydrate"
       lambda_key  = "hydrate"
@@ -47,9 +61,10 @@ locals {
       lambda_key  = "hydrate"
       description = "CORS preflight for hydration"
     }
+
     get_snapshots_rehydrate = {
       route_key   = "GET /snapshots/rehydrate/{rehydration_id}"
-      lambda_key  = "rehydrate" # Uses existing rehydrate handler
+      lambda_key  = "rehydrate"
       description = "Retrieve comprehensive snapshot markdown from S3"
     }
     options_snapshots_rehydrate = {
@@ -57,8 +72,18 @@ locals {
       lambda_key  = "rehydrate"
       description = "CORS preflight for rehydrate by ID"
     }
+
+    # --------------------------
+    # LEGACY / COMPATIBILITY ROUTES
+    # --------------------------
+    get_rehydrate = {
+      route_key   = "GET /rehydrate/{thread_id}/latest"
+      lambda_key  = "rehydrate"
+      description = "Get latest thread snapshot (legacy route)"
+    }
   }
 }
+
 
 resource "aws_apigatewayv2_api" "http" {
   name          = "${var.name}-api"
