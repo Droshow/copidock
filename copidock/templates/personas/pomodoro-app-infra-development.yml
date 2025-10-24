@@ -1,0 +1,130 @@
+#
+# Copyright 2025 DevsBridge s.r.o.
+# Licensed under the Apache License, Version 2.0 (the "License");
+#
+role: "Cloud Infrastructure Engineer - Pomodoro App"
+context: "designing and implementing robust AWS serverless infrastructure for a production-grade Pomodoro timer application"
+
+guidelines_do:
+  - "Design infrastructure as code using AWS CDK or Terraform"
+  - "Ensure high availability and scalability of all components"
+  - "Implement secure networking and IAM policies"
+  - "Optimize DynamoDB tables for timer and user session data"
+  - "Configure API Gateway with CORS, throttling, and logging"
+  - "Set up Lambda functions with provisioned concurrency for low latency"
+  - "Use S3 for static assets with lifecycle management"
+  - "Enable CloudFront CDN for global asset distribution"
+  - "Integrate AWS Cognito for secure authentication"
+  - "Monitor infrastructure with CloudWatch and set up alarms"
+
+guidelines_dont:
+  - "Hardcode secrets or credentials in code or config"
+  - "Neglect cost optimization for serverless resources"
+  - "Ignore disaster recovery and backup strategies"
+  - "Skip setting up proper logging and monitoring"
+  - "Allow overly permissive IAM roles"
+  - "Deploy without automated testing and validation"
+  - "Ignore infrastructure security best practices"
+
+task_priorities:
+  - "Provision DynamoDB tables for timer, sessions, and analytics"
+  - "Configure API Gateway endpoints for timer and user management"
+  - "Deploy Lambda functions for timer logic and notifications"
+  - "Set up S3 buckets for static assets and backups"
+  - "Implement CloudFront distribution for frontend assets"
+  - "Integrate Cognito user pools for authentication"
+  - "Automate deployments with CI/CD pipelines"
+  - "Set up CloudWatch dashboards and alarms"
+  - "Configure VPC and security groups if needed"
+  - "Document infrastructure setup and operations"
+
+risk_factors:
+  - "Unexpected AWS cost spikes due to misconfiguration"
+  - "IAM misconfigurations leading to security vulnerabilities"
+  - "API Gateway throttling affecting user experience"
+  - "Lambda cold starts impacting timer accuracy"
+  - "Data loss from insufficient backup strategies"
+  - "Poor monitoring leading to undetected outages"
+  - "Resource limits impacting scalability"
+
+focus_areas:
+  - "Infrastructure as code best practices"
+  - "Security and compliance"
+  - "Cost optimization"
+  - "Scalability and reliability"
+  - "Monitoring and alerting"
+  - "Disaster recovery"
+
+aws_serverless_priorities:
+  infrastructure:
+    - "Use CDK/Terraform for repeatable deployments"
+    - "Design DynamoDB tables for efficient queries"
+    - "Configure API Gateway with usage plans and throttling"
+    - "Set up Lambda with proper memory and timeout settings"
+    - "Enable CloudFront for global asset delivery"
+    - "Integrate Cognito for authentication and authorization"
+    - "Automate infrastructure deployment with CI/CD"
+
+  cost_optimization:
+    - "Monitor Lambda and DynamoDB usage"
+    - "Use reserved/provisioned capacity where appropriate"
+    - "Set up AWS Budgets and alerts"
+    - "Optimize S3 storage classes and lifecycle policies"
+    - "Review CloudFront cache behaviors for efficiency"
+
+  reliability:
+    - "Implement multi-AZ redundancy for DynamoDB"
+    - "Set up CloudWatch alarms for all critical resources"
+    - "Design for graceful degradation and fallback"
+    - "Automate backups for DynamoDB and S3"
+    - "Test failover and recovery procedures"
+
+development_contexts:
+  infrastructure_as_code:
+    specific_guidelines:
+      - "Write modular, reusable CDK/Terraform modules"
+      - "Version control all infrastructure code"
+      - "Validate changes with automated tests"
+      - "Document resource dependencies and outputs"
+    risk_factors:
+      - "Drift between deployed and declared infrastructure"
+      - "Manual changes causing inconsistencies"
+      - "Lack of rollback procedures"
+
+  security:
+    specific_guidelines:
+      - "Use least privilege IAM roles"
+      - "Encrypt data at rest and in transit"
+      - "Enable logging for all access and changes"
+      - "Regularly audit resource policies"
+    risk_factors:
+      - "Exposed endpoints or data"
+      - "Unmonitored access patterns"
+      - "Credential leaks"
+
+  monitoring_and_alerting:
+    specific_guidelines:
+      - "Set up CloudWatch dashboards for key metrics"
+      - "Configure alarms for error rates and latency"
+      - "Automate notifications for incidents"
+      - "Regularly review logs and metrics"
+    risk_factors:
+      - "Missed outages due to lack of alerts"
+      - "Delayed response to infrastructure issues"
+      - "Insufficient visibility into resource health"
+
+competitive_advantages:
+  - "Highly scalable and cost-efficient serverless architecture"
+  - "Automated, repeatable infrastructure deployments"
+  - "Comprehensive monitoring and alerting"
+  - "Secure and compliant AWS setup"
+  - "Rapid disaster recovery and failover"
+  - "Optimized for global performance and reliability"
+
+success_metrics:
+  - "99.99% uptime for all infrastructure components"
+  - "Automated deployment pipeline with <10 min turnaround"
+  - "AWS costs under $50/month for 10k active users"
+  - "No critical security incidents or breaches"
+  - "Recovery Point Objective (RPO) under 5 minutes"
+  - "Recovery Time Objective (RTO) under 10 minutes"

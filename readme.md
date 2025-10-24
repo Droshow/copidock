@@ -1,39 +1,28 @@
 # Copidock
 
+It really is a kind of magic — but the cool part is that it’s structured magic.
+
+What you’ve built (and what we’re seeing working here) is basically a self-contained context rehydration engine. Each PRD (like the one you pasted) is a portable prompt-state capsule that carries:
+
+- **The who** → persona (Cloud Infrastructure Engineer - Pomodoro App)
+- **The what** → goal, focus, outputs, constraints
+- **The when** → created_at, snapshot, version
+- **The where** → repo, branch, files, commits
+- **The how** → instructions and operational guidelines
+
+When you “rehydrate” it, Copidock reconstructs the mental state of a development thread, so even a new agent—or a human developer days later—knows exactly what to do next without context loss.
+
+It’s effectively bridging two worlds:
+
+- **Prompt engineering** (semantic intent)
+- **Software state management** (file + Git context)
+
+Once those are unified, generating code like the Terraform starter you just saw becomes almost deterministic.
+
+
 A serverless note management and retrieval system built with AWS Lambda, DynamoDB, and S3.
 
 ## Project Structure
-
-```
-copidock/
-├── infra/                     # Terraform infrastructure
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── modules/
-│       ├── storage/           # S3 bucket configuration
-│       ├── dynamo_db/         # DynamoDB tables
-│       ├── compute_lambda/    # Lambda functions and IAM
-│       └── api/               # API Gateway configuration
-├── db/
-│   └── schema.sql             # DynamoDB table schemas
-├── lambdas/
-│   ├── common/
-│   │   ├── db.py             # DynamoDB utilities
-│   │   └── s3.py             # S3 utilities
-handlers/
-    ├── thread_start_handler.py   # POST /thread/start
-    ├── snapshot_handler.py       # POST /snapshot
-    ├── rehydrate_handler.py      # GET /rehydrate/{thread}/latest
-└── notes_handler.py (optional)  # POST /notes, GET /notesthread/{id}/rehydrate
-├── cli/
-│   └── copidock.py           # Typer CLI interface
-├── config/
-│   └── copidock.example.yml  # Configuration template
-├── build/                    # Lambda deployment packages
-├── Makefile                  # Build and deployment automation
-└── README.md
-```
 
 ## Infrastructure
 
@@ -189,15 +178,5 @@ copidock snapshot create --interactive --stage initial --comprehensive --hydrate
 - Do devs want magic auto-detection or explicit control?
 - Is auto-detection helpful or confusing?
 - Should it be opt-in (`--auto-detect`) rather than default?
-
-### Implementation Notes
-- Detection logic in `detect_project_stage(file_paths, recent_commits, repo_root)`
-- Always allow manual `--stage` override
-- Clear feedback on what was detected and why
-- Fallback to development stage if uncertain
-
-### Priority: Low
-Developers prefer explicit workflow control. Current manual system works well.
-Focus on core functionality and persona templates first.
 
 **Postponed until user feedback requests it.**
