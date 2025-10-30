@@ -110,5 +110,3 @@ Persona template inheritance (base → specialized)
 
 Implement multiline input support for --interactive mode in Copidock CLI.
 → Replace typer.prompt() with a custom prompt_multiline() loop to allow bullet-style entries and blank-line submission.
-
-Fix S3 foldering it's not divided per --initial and --development strategy

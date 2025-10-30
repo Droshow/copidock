@@ -272,25 +272,98 @@ def find_important_files(repo_root: str) -> List[str]:
     
     return unique_files
 
-def gather_comprehensive(repo_root: str, thread_id: str, max_tokens: int = 6000) -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
-    """Extended gathering for comprehensive snapshots"""
-    # 1. Git changes (existing MVP logic)
+def files_changed_in_last_commit(repo_root: str):
+    """Return list of files changed in the most recent commit."""
+    try:
+        result = subprocess.run(
+            ["git", "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+            cwd=repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        return files
+    except subprocess.CalledProcessError:
+        return []
+
+def keep_if_exists(repo_root: str, paths: List[str]) -> List[str]:
+    """Return only the files from 'paths' that actually exist inside the repo."""
+    root = Path(repo_root)
+    return [p for p in paths if (root / p).exists()]
+
+def _guess_lang(ext: str) -> str:
+    return {
+        ".py": "python", ".js": "javascript", ".ts": "typescript",
+        ".tsx": "tsx", ".jsx": "jsx",
+        ".md": "markdown", ".json": "json", ".yml": "yaml", ".yaml": "yaml",
+        ".tf": "hcl", ".sh": "bash", ".css": "css", ".html": "html",
+    }.get(ext.lower(), "")
+
+
+def render_files_markdown(repo_root: Path, file_paths: list, max_total_bytes: int = 200_000) -> str:
+    """
+    Render a '## Source Files' section with code blocks.
+    Caps total bytes to avoid giant snapshots.
+    """
+    parts = []
+    total = 0
+    root = Path(repo_root)
+
+    for rel in file_paths:
+        p = root / rel
+        if not p.exists() or not p.is_file():
+            continue
+        try:
+            data = p.read_bytes()
+        except Exception:
+            continue
+
+        if total + len(data) > max_total_bytes:
+            break
+
+        total += len(data)
+        try:
+            text = data.decode("utf-8", errors="ignore")
+        except Exception:
+            continue
+
+        lang = _guess_lang(p.suffix)
+        parts.append(f"### `{rel}`\n\n```{lang}\n{text}\n```\n")
+
+    if not parts:
+        return ""
+
+    header = "## Source Files (embedded)\n\n"
+    return header + "\n".join(parts)
+
+def gather_comprehensive(repo_root: str, thread_id: str, max_tokens: int = 6000):
+    """Extended gathering for comprehensive snapshots — minimal + resilient."""
+    # 1. Changed files
     changed_files, _ = build_smart_paths(repo_root, max_tokens // 2)
-    
-    # 2. Important files (always include if not already in changed_files)
-    important_files = find_important_files(repo_root)
-    
-    # Combine and deduplicate
-    all_candidates = list(set(changed_files + important_files))
-    
-    # Apply filtering and budget to combined list
+
+    # 2. Fallback: if nothing changed, include last commit’s files
+    if not changed_files:
+        last_commit_files = files_changed_in_last_commit(repo_root)
+        changed_files = last_commit_files
+
+    # 3. Always-include "identity" files if they exist
+    identity_files = [
+        "README.md", "package.json", "infra/main.tf",
+        "infra/variables.tf", "infra/outputs.tf", ".copidock/state.json"
+    ]
+    important_files = find_important_files(repo_root) + keep_if_exists(repo_root, identity_files)
+
+    # 4. Combine and deduplicate
+    all_candidates = sorted(set(changed_files + important_files))
+
+    # 5. Filter and enforce token budget
     filtered_candidates = filter_relevant_files(all_candidates, repo_root)
     final_files = enforce_budget(filtered_candidates, repo_root, max_tokens)
-    
-    # 3. Recent commits (for context)
+
+    # 6. Git commits + thread notes
     recent_commits = get_recent_commits(repo_root, limit=5)
-    
-    # 4. Thread notes (placeholder for now - will integrate with backend later)
-    notes = []  # TODO: fetch_thread_notes(thread_id)
-    
+    notes = []  # TODO: integrate Copidock thread notes later
+
     return final_files, recent_commits, notes
