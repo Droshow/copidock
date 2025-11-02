@@ -1,0 +1,51 @@
+# Copidock specific files
+copidock/rehydrations/
+.copidock/state.json
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# AWS credentials (security)
+.aws/
+aws-credentials.txt
+
+# Terraform state files (if any)
+*.tfstate
+*.tfstate.*
+.terraform/

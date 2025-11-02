@@ -187,7 +187,12 @@ Copidock is a **productivity enhancement tool** designed to bridge the gap betwe
 
 ## 📄 License
 
+
+
+MIT License
 Copyright © 2025 DevsBridge
+Permission is hereby granted, free of charge, to any person obtaining a copy.
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
