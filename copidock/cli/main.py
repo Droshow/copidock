@@ -1,6 +1,4 @@
 import typer
-import traceback
-import json
 from typing import Optional, Dict
 from rich import print as rprint
 from pathlib import Path
@@ -209,7 +207,6 @@ def save_local_artifact(rehydration_content: str, thread_data: Dict) -> str:
 def snapshot_cmd(
     action: str = typer.Argument(..., help="Action: create"),
     hydrate: bool = typer.Option(False, "--hydrate", help="Save comprehensive snapshot as markdown to S3"),
-    mode: str = typer.Option("auto", "--mode", help="Mode: auto, comprehensive, manual"),
     message: Optional[str] = typer.Option("", "--message", help="Snapshot message"),
     auto: bool = typer.Option(False, "--auto", help="Auto-gather git changes"),
     comprehensive: bool = typer.Option(False, "--comprehensive", help="Generate comprehensive rehydration"),
@@ -626,29 +623,68 @@ def list_rehydrations():
     console.print(f"\n💡 Use: [bold]copidock rehydrate restore LATEST[/bold]")
 
 def restore_rehydration(rehydration_id: str):
-    """Restore from local artifact"""
+    """Restore from local artifact and refresh local thread context"""
     from pathlib import Path
-    
+    import json
+
     rehydrations_dir = Path("copidock/rehydrations")
-    
+
     if rehydration_id == "LATEST":
         latest_path = rehydrations_dir / "LATEST"
         if not latest_path.exists():
             typer.echo("No LATEST rehydration found.")
             raise typer.Exit(1)
         rehydration_id = latest_path.read_text().strip()
-    
-    # Add .md extension if not present
+
     if not rehydration_id.endswith(".md"):
         rehydration_id += ".md"
-    
+
     artifact_path = rehydrations_dir / rehydration_id
     if not artifact_path.exists():
         typer.echo(f"Rehydration artifact not found: {rehydration_id}")
         raise typer.Exit(1)
-    
+
     content = artifact_path.read_text()
+
+    # --- Minimal front-matter parse for thread context ---
+    thread_id = None
+    goal = None
+    persona = None
+    for line in content.splitlines():
+        if line.startswith("thread_id:"):
+            thread_id = line.split(":", 1)[1].strip()
+        elif line.startswith("goal:"):
+            goal = line.split(":", 1)[1].strip().strip('"')
+        elif line.startswith("persona:"):
+            persona = line.split(":", 1)[1].strip()
+        elif line.strip() == "---":
+            # stop after front-matter block
+            break
+
+    # --- Refresh local .copidock/state.json if valid context found ---
+    try:
+        repo_root = find_repo_root()
+        state = load_state(repo_root)
+        if thread_id:
+            state["thread_id"] = thread_id
+        if goal:
+            state["goal"] = goal
+        if persona:
+            state["persona"] = persona
+        save_state(repo_root, state)
+        rprint(f"[green]Local state refreshed[/green] (thread: {thread_id}, goal: {goal})")
+    except Exception:
+        rprint("[yellow]⚠️ Unable to update local state (non-fatal)[/yellow]")
+
+    # --- Show restored content ---
+    from rich.panel import Panel
+    rprint(Panel(
+        f"Rehydrated: [cyan]{rehydration_id}[/cyan]\n"
+        f"Thread: {thread_id or 'unknown'}\nGoal: {goal or 'N/A'}\nPersona: {persona or 'N/A'}",
+        title="🌀 Context Restored"
+    ))
     rprint(content)
+
     
 if __name__ == "__main__":
     app()
