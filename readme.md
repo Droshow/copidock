@@ -1,182 +1,178 @@
-# Copidock
+# 🪄 Copidock — Context Rehydration CLI for Developers & AI Creators (Beta)
 
-It really is a kind of magic — but the cool part is that it’s structured magic.
+> **AI + Infra + Human Memory → One Flow**
 
-What you’ve built (and what we’re seeing working here) is basically a self-contained context rehydration engine. Each PRD (like the one you pasted) is a portable prompt-state capsule that carries:
+In the era when AI develops code, we need to treat prompts like git.
 
-- **The who** → persona (Cloud Infrastructure Engineer - Pomodoro App)
-- **The what** → goal, focus, outputs, constraints
-- **The when** → created_at, snapshot, version
-- **The where** → repo, branch, files, commits
-- **The how** → instructions and operational guidelines
+Copidock turns your development state into something you can **save, rehydrate, and continue later** — like a snapshot of your mental model.  
+When you run a snapshot command, it collects your goal, reasoning, and relevant code, and turns it into a structured **rehydratable document** (PRD-style).  
+Later, you or another developer can "rehydrate" that snapshot and pick up where it left off — no lost context, no guessing.
 
-When you “rehydrate” it, Copidock reconstructs the mental state of a development thread, so even a new agent—or a human developer days later—knows exactly what to do next without context loss.
+---
 
-It’s effectively bridging two worlds:
+## 🌍 Why This Scaffolding Exists
 
-- **Prompt engineering** (semantic intent)
-- **Software state management** (file + Git context)
+We're building a **serverless note and context management system** powered by:
+- AWS **Lambda**, **DynamoDB**, and **S3**
+- Terraform-based IaC deployment
+- AI-guided context synthesis and rehydration
 
-Once those are unified, generating code like the Terraform starter you just saw becomes almost deterministic.
+Each snapshot bridges **prompt engineering** and **software state management**.  
+It captures:
+- **Who** — persona (e.g., Cloud Infra Engineer, Backend Dev)
+- **What** — goal, focus, expected outputs
+- **When/Where** — commit, repo, branch
+- **How** — reasoning and operator instructions
 
+---
 
-A serverless note management and retrieval system built with AWS Lambda, DynamoDB, and S3.
+## ⚙️ Core Commands
 
-## Project Structure
+### 1. Create a new snapshot
 
-## Infrastructure
-
-- **Storage**: S3 bucket for notes and artifacts
-- **Database**: DynamoDB tables for chunks, tokens, threads, and events
-- **Compute**: AWS Lambda functions for API endpoints
-- **API**: HTTP API Gateway with Lambda integrations
-
-## Getting Started
-
-### Prerequisites
-
-- AWS CLI configured
-- Terraform >= 1.0
-- Python 3.11+
-
-### Deployment
+Generate a rehydratable snapshot of your current thread and codebase:
 
 ```bash
-# Deploy infrastructure
+copidock snapshot create --comprehensive --hydrate
+```
+
+This will:
+- Gather recent Git context
+- Generate a PRD-style markdown file
+- Upload it to S3 for future rehydration
+- Save a local copy under `copidock/rehydrations/`
+
+### 2. Interactive mode (recommended)
+
+For structured guidance and persona loading:
+
+```bash
+copidock snapshot create --interactive --stage initial --comprehensive --hydrate
+```
+
+- `--stage initial` → Greenfield / PRD setup template
+- `--stage development` → Ongoing implementation template
+- `--comprehensive` → Includes Git diffs, file snippets, and commits
+- `--hydrate` → Uploads snapshot + updates local index
+
+**Note:** Use `--stage development` when continuing an existing project where you want to track git changes and file modifications. Use `--stage initial` for greenfield projects or when you want a clean template without git context.
+
+### 3. Rehydrate from saved snapshots
+
+```bash
+# List available snapshots
+copidock rehydrate list
+
+# Restore latest snapshot
+copidock rehydrate restore LATEST
+
+# Restore specific snapshot
+copidock rehydrate restore 20241102-143022-pomodoro-app
+```
+
+---
+
+## 🧠 Two-Button Workflow
+
+### Start a thread
+```bash
+copidock thread start "Implement Pomodoro App Infrastructure"
+```
+
+### Create a snapshot
+```bash
+copidock snapshot create --comprehensive --hydrate
+```
+
+**Result:** a portable `.md` snapshot that stores your entire development reasoning — rehydratable anytime.
+
+---
+
+## 🏗️ Infrastructure Overview
+
+Built for reproducibility and scalability.
+
+| Component | Description |
+|-----------|-------------|
+| **Storage** | S3 buckets for snapshots, logs, and assets |
+| **Database** | DynamoDB tables for threads, events, and notes |
+| **Compute** | AWS Lambda functions as stateless handlers |
+| **API** | API Gateway fronting the serverless endpoints |
+| **Infra** | Managed via Terraform for full IaC reproducibility |
+
+Deploy with:
+```bash
 cd infra
 terraform init
-terraform plan
 terraform apply
-
-# Build and deploy Lambda functions
-make build
-make deploy
 ```
 
-## API Endpoints
+---
 
-### Thread Management
-- `POST /thread/start` - Create a new decision thread
-  - Input: `{ "goal": "string", "repo": "optional", "branch": "optional" }`
-  - Output: `{ "thread_id": "uuid", "thread_name": "string" }`
+## 💬 Developer Notes
 
-- `POST /snapshot` - Create a snapshot of thread context
-  - Input: `{ "thread_id": "uuid", "paths": ["optional", "file", "paths"] }`
-  - Output: `{ "presigned_url": "string", "s3_key": "string", "version": number }`
+- Copidock is currently in **Beta** — expect structure changes.
+- Focus for now: snapshot creation, hydration, and state integrity.
+- Avoid checking in internal Copidock files.
 
-- `GET /rehydrate/{thread}/latest` - Get latest thread snapshot
-  - Output: `{ "presigned_url": "string", "snapshot_metadata": {} }`
-
-### Notes (Optional)
-- `POST /notes` - Store new notes
-  - Input: `{ "content": "string", "tags": ["optional"], "thread_id": "optional" }`
-- `GET /notes` - Retrieve notes
-  - Query params: `?thread_id=uuid&limit=50`
-
-## Two-Button UX Flow
-
-1. **Start Thread**: `POST /thread/start` with your goal
-2. **Create Snapshot**: `POST /snapshot` with thread_id → opens rehydratable.md
-
-The snapshot contains:
-- Thread goal and context
-- Gathered sources from files/repos
-- Current state and next steps
-- Rehydratable format for continuation
-
-## Configuration
-
-Copy `config/copidock.example.yml` to `config/copidock.yml` and update with your settings.
-
-# Copidock - Retrieval Augmented Generation - the personal experiencing of future AI + Human CoWork
-
-**AI doesn't just generate code → it remembers your reasoning and hands it back when you need to rehydrate.**
-
-A serverless decision thread system that externalizes your working memory. Built with AWS Lambda, DynamoDB, and S3.
-
-## Philosophy
-
-> **You don't have to hold everything in your head** → the thread + snapshot becomes your externalized working memory.
-
-> **Infra + state are decoupled** → Terraform gives you reproducibility, snapshots give you rehydration, and AI sits in between gluing it together.
-
-> **You stay in the driver's seat** → AI doesn't decide the roadmap, it gives you structured options, and you decide where to steer.
-
-## How It Works
-
-Instead of losing context when you switch tasks, Copidock creates **decision threads** that capture:
-- Your goal and reasoning
-- Relevant code and documentation
-- Current state and next steps
-- Rehydratable snapshots for continuation
-
-When you return to a thread, the AI can instantly reconstruct your mental model from the snapshot.
-
-# Copidock CLI Documentation
-
-## Thread Management Commands
-
-The `thread` command is your entry point into Copidock's intelligent development workflow. It creates and manages **decision threads** - persistent contexts that capture your development goals and reasoning.
-
-### Command Structure
-
-```bash
-python -m copidock.cli.main thread [OPTIONS] ACTION [GOAL]
+Add this to your `.gitignore`:
+```gitignore
+# Copidock
+copidock/rehydrations/
+.copidock/state.json
 ```
 
-### Arguments
+---
 
-| Argument | Type | Description | Required |
-|----------|------|-------------|----------|
-| `action` | TEXT | The thread action to perform. Currently supports: `start` | ✅ Required |
-| `goal` | TEXT | Your development objective or task description | Optional |
+## 🧩 Philosophy
 
-### Options
+> "AI doesn't replace reasoning — it remembers it."
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--repo` | TEXT | (auto-detected) | Repository name for context |
-| `--branch` | TEXT | `main` | Git branch you're working on |
-| `--profile` | TEXT | `default` | Configuration profile from `config.toml` |
-| `--api` | TEXT | (from config) | Override API base URL |
-| `--json` | flag | `false` | Output results in JSON format |
-| `--help` | flag | - | Show command help and exit |
+Copidock externalizes your working memory so you can:
 
-## Simplified Flag Logic
+- **Pause** a task, switch context, and resume later without losing your train of thought.
+- **Share** project reasoning with teammates through portable, rehydratable documents.
+- **Combine** reproducible infrastructure with semantic intent — Terraform for systems, Copidock for minds.
 
-# Rich YML template guidance
-copidock snapshot create --interactive --stage initial --comprehensive --hydrate
+---
 
-# Empty structure only  
-copidock snapshot create --interactive --stage initial --hydrate
+## ⚡ Summary
 
-## 15.10.2025 interesting auto detect stage idea to be considered
+- **Purpose** → Persistent context for human + AI collaboration
+- **Core Command** → `copidock snapshot create --comprehensive --hydrate`
+- **Infra** → Serverless (Lambda, S3, DynamoDB, API Gateway)
+- **State** → Locally cached + S3 synchronized
+- **Status** → Beta — focus on stability, snapshot logic, and rehydration accuracy
 
-## Stage Auto-Detection (Future Enhancement)
+---
 
-### Concept
-Automatically detect whether project is in "initial" (greenfield/planning) or "development" (ongoing work) stage based on:
-- Git history depth (few commits = initial)  
-- File structure maturity (tests, docs, CI = development)
-- Project artifacts (package.json, requirements.txt = development)
+## 🤝 Contributing
 
-### Current Manual Control (Developer-Preferred)
-```bash
-# Explicit stage control - developers choose their workflow
-copidock snapshot create --interactive --stage initial --comprehensive --hydrate
-copidock snapshot create --interactive --stage development --comprehensive --hydrate
-```
+For early collaborators testing snapshot and rehydrate flows locally:
 
-### Future Auto-Detection
-```bash  
-# Smart defaults with manual override capability
-copidock snapshot create --interactive --comprehensive --hydrate  # auto-detects
-copidock snapshot create --interactive --stage initial --comprehensive --hydrate  # manual override
-```
+1. **Clone the repository**
+   ```bash
+   git clone <repo-url>
+   cd copidock
+   ```
 
-### Developer Feedback Needed
-- Do devs want magic auto-detection or explicit control?
-- Is auto-detection helpful or confusing?
-- Should it be opt-in (`--auto-detect`) rather than default?
+2. **Install dependencies**
+   ```bash
+   pip install -e .
+   ```
 
-**Postponed until user feedback requests it.**
+3. **Test locally**
+   ```bash
+   copidock thread start "Test thread"
+   copidock snapshot create --hydrate
+   copidock rehydrate list
+   ```
+
+4. **Report issues**
+   - Focus on snapshot accuracy and rehydration consistency
+   - Test across different project stages and personas
+   - Verify local artifact management works correctly
+
+---
+
+Built with structure, intent, and a bit of magic. ✨
