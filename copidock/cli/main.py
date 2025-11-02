@@ -16,7 +16,10 @@ from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROF
 from ..interactive.detection import auto_detect_context
 from ..interactive.flow import run_interactive_flow, confirm_snapshot_creation
 
-app = typer.Typer(add_completion=False, help="Copidock CLI - Serverless note management")
+app = typer.Typer(
+    add_completion=False, 
+    help="Copidock CLI - Serverless note management\n\nExamples:\n  copidock snapshot --hydrate\n  copidock rehydrate restore LATEST"
+)
 
 def create_rehydration_markdown(thread_data: Dict, synth_sections: Dict, file_paths: list, recent_commits: list, enhanced_context: Dict) -> str:
     created_at = datetime.utcnow().isoformat() + "Z"
@@ -159,6 +162,49 @@ def get_persona_specific_options(persona: str) -> Dict:
     persona_config = template_loader.load_persona(persona)
     return persona_config.get('cli_parameters', {})
 
+def save_local_artifact(rehydration_content: str, thread_data: Dict) -> str:
+    """Save rehydration artifact locally and update manifest"""
+    from pathlib import Path
+    import json
+    from datetime import datetime
+    
+    # Create rehydrations directory
+    rehydrations_dir = Path("copidock/rehydrations")
+    rehydrations_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    thread_slug = thread_data.get('goal', 'task').lower().replace(' ', '-')[:20]
+    filename = f"{timestamp}-{thread_slug}.md"
+    
+    # Save artifact
+    artifact_path = rehydrations_dir / filename
+    artifact_path.write_text(rehydration_content)
+    
+    # Update manifest
+    manifest_path = rehydrations_dir / "index.json"
+    manifest = []
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+    
+    manifest.append({
+        "filename": filename,
+        "timestamp": timestamp,
+        "goal": thread_data.get('goal', 'task'),
+        "thread_id": thread_data.get('thread_id'),
+        "created_at": datetime.now().isoformat()
+    })
+    
+    # Keep only last 10 entries
+    manifest = manifest[-10:]
+    manifest_path.write_text(json.dumps(manifest, indent=2))
+    
+    # Update LATEST pointer
+    latest_path = rehydrations_dir / "LATEST"
+    latest_path.write_text(filename)
+    
+    return filename
+
 @app.command("snapshot")
 def snapshot_cmd(
     action: str = typer.Argument(..., help="Action: create"),
@@ -180,12 +226,34 @@ def snapshot_cmd(
     # Interactive and intelligence modes
     interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
     auto_detect: bool = typer.Option(True, "--auto-detect", help="Auto-detect context from git and files"),
+
+    # NEW: Optional CLI polish parameters
+#     to be able to do this in the future: 
+#     copidock snapshot --comprehensive --include "*.py"
+#     copidock snapshot --comprehensive --exclude "node_modules/*,tests/*,build/*"
+#     copidock snapshot --comprehensive \
+#   --include "api/*.py,services/*.py" \
+#   --exclude "scripts/*,migrations/*"
+
+    embed_bytes: int = typer.Option(200000, "--embed-bytes", help="Max bytes to embed in rehydration"),
+    include: Optional[str] = typer.Option(None, "--include", help="Glob pattern for files to include"),
+    exclude: Optional[str] = typer.Option(None, "--exclude", help="Glob pattern for files to exclude"),
     
     # Existing parameters
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
 ):  
+    """Create development snapshot with optional stage awareness
+    
+    Examples:
+        copidock snapshot --hydrate
+        copidock rehydrate restore LATEST
+        copidock snapshot --comprehensive --hydrate --focus "timer logic"
+        copidock snapshot --include "*.py" --exclude "test_*"
+    """
+    
+
     """Create development snapshot with optional stage awareness"""
 
     if action != "create":
@@ -291,15 +359,24 @@ def snapshot_cmd(
             
             # Hydrate logic for comprehensive mode
             if hydrate:
-
                 files_md = render_files_markdown(Path(repo_root), file_paths)
-                markdown_content = create_rehydration_markdown(
+                rehydration_content = create_rehydration_markdown(
                     thread_data, synth_sections, file_paths, recent_commits, enhanced_context
                 )
                 if files_md:
-                    markdown_content += "\n\n" + files_md
+                    rehydration_content += "\n\n" + files_md
 
-                hydrate_data = client.hydrate_snapshot(thread_id, markdown_content, {
+                filename = save_local_artifact(rehydration_content, thread_data)
+                from rich.panel import Panel
+
+                rprint(Panel(
+                f"✅ [green]Hydration Artifact Ready[/green]\n"
+                f"📁 Saved to: [cyan]copidock/rehydrations/{filename}[/cyan]\n"
+                f"🔄 Restore with: [yellow]copidock rehydrate restore LATEST[/yellow]",
+                title="Hydration Complete"
+                ))
+
+                hydrate_data = client.hydrate_snapshot(thread_id, rehydration_content, {
                     'persona': persona,
                     'focus': focus,
                     'output': output,
@@ -394,13 +471,23 @@ def snapshot_cmd(
             identity = keep_if_exists(repo_root, ["README.md", "package.json", ".copidock/state.json"])
             files_md = render_files_markdown(Path(repo_root), identity)
 
-            markdown_content = create_rehydration_markdown(
+            rehydration_content = create_rehydration_markdown(
                 thread_data, synth_sections, empty_file_paths, empty_commits, enhanced_context
             )
             if files_md:
-                markdown_content += "\n\n" + files_md
+                rehydration_content += "\n\n" + files_md
 
-            hydrate_data = client.hydrate_snapshot(thread_id, markdown_content, {
+            filename = save_local_artifact(rehydration_content, thread_data)
+            from rich.panel import Panel
+
+            rprint(Panel(
+            f"✅ [green]Hydration Artifact Ready[/green]\n"
+            f"📁 Saved to: [cyan]copidock/rehydrations/{filename}[/cyan]\n"
+            f"🔄 Restore with: [yellow]copidock rehydrate restore LATEST[/yellow]",
+            title="Hydration Complete"
+            ))
+
+            hydrate_data = client.hydrate_snapshot(thread_id, rehydration_content, {
                 'persona': persona,
                 'focus': focus,
                 'output': output,
@@ -483,94 +570,85 @@ def snapshot_cmd(
             rprint(f"[red]Error:[/red] {e}")
             raise typer.Exit(1)
 
-
 @app.command("rehydrate")
 def rehydrate_cmd(
-    action: str = typer.Argument(..., help="Action: restore"),
-    rehydration_id: Optional[str] = typer.Argument(None, help="Rehydration ID (from --hydrate)"),
+    action: str = typer.Argument(..., help="Action: 'restore' or 'list'"),
+    rehydration_id: Optional[str] = typer.Argument(None, help="Rehydration ID or 'LATEST'"),
     profile: str = typer.Option(DEFAULT_PROFILE, "--profile", help="Config profile"),
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
     save_local: bool = typer.Option(True, "--save-local/--no-save-local", help="Save to local rehydrations folder"),
 ):
-    """Rehydrate from comprehensive markdown snapshot"""
-    if action != "restore":
-        rprint("[red]Error: Only 'restore' action is supported[/red]")
+    """Rehydrate from saved artifacts or list available rehydrations"""
+    
+    if action == "list":
+        list_rehydrations()
+        return
+    elif action == "restore":
+        if not rehydration_id:
+            typer.echo("Error: rehydration_id required for restore action")
+            raise typer.Exit(1)
+        restore_rehydration(rehydration_id)
+    else:
+        typer.echo(f"Error: Unknown action '{action}'. Use 'restore' or 'list'")
+        raise typer.Exit(1)
+
+def list_rehydrations():
+    """List available local rehydrations"""
+    from pathlib import Path
+    import json
+    from rich.table import Table
+    from rich.console import Console
+    
+    console = Console()
+    rehydrations_dir = Path("copidock/rehydrations")
+    manifest_path = rehydrations_dir / "index.json"
+    
+    if not manifest_path.exists():
+        console.print("No rehydrations found.")
+        return
+    
+    manifest = json.loads(manifest_path.read_text())
+    
+    table = Table(title="Available Rehydrations")
+    table.add_column("ID", style="cyan")
+    table.add_column("Goal", style="green")
+    table.add_column("Created", style="yellow")
+    
+    for entry in reversed(manifest):  # Show newest first
+        table.add_row(
+            entry["filename"].replace(".md", ""),
+            entry["goal"],
+            entry["created_at"][:19]  # Strip microseconds
+        )
+    
+    console.print(table)
+    console.print(f"\n💡 Use: [bold]copidock rehydrate restore LATEST[/bold]")
+
+def restore_rehydration(rehydration_id: str):
+    """Restore from local artifact"""
+    from pathlib import Path
+    
+    rehydrations_dir = Path("copidock/rehydrations")
+    
+    if rehydration_id == "LATEST":
+        latest_path = rehydrations_dir / "LATEST"
+        if not latest_path.exists():
+            typer.echo("No LATEST rehydration found.")
+            raise typer.Exit(1)
+        rehydration_id = latest_path.read_text().strip()
+    
+    # Add .md extension if not present
+    if not rehydration_id.endswith(".md"):
+        rehydration_id += ".md"
+    
+    artifact_path = rehydrations_dir / rehydration_id
+    if not artifact_path.exists():
+        typer.echo(f"Rehydration artifact not found: {rehydration_id}")
         raise typer.Exit(1)
     
-    if not rehydration_id:
-        rprint("[red]Error: rehydration_id is required[/red]")
-        raise typer.Exit(1)
-    
-    repo_root = find_repo_root()
-    api_base, api_key, timeout = resolve_api(profile, api)
-    client = CopidockAPI(api_base, api_key, timeout)
-    
-    try:
-        # Get the rehydration data from API
-        rehydration_data = client.rehydrate_from_markdown(rehydration_id)
-        
-        # Extract the markdown content and metadata
-        markdown_content = rehydration_data.get('markdown_content', '')
-        metadata = rehydration_data.get('metadata', {})
-        
-        # Create local rehydrations directory
-        rehydrations_dir = Path('copidock/rehydrations')
-        rehydrations_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Generate filename with timestamp from metadata or current time
-        timestamp = metadata.get('created_at', datetime.now().strftime('%Y%m%d-%H%M%S'))
-        if 'T' in timestamp:  # Convert ISO format to simple format
-            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).strftime('%Y%m%d-%H%M%S')
-        
-        filename = f"{rehydration_id}-{timestamp}.md"
-        file_path = rehydrations_dir / filename
-        
-        # Save the markdown content locally
-        if save_local:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(markdown_content)
-            
-            rprint(f"[green]✅ Rehydration saved to: {file_path}[/green]")
-        
-        # Update local state with rehydrated context
-        state = load_state(repo_root)
-        state["thread_id"] = rehydration_data.get("thread_id", "")
-        state["goal"] = rehydration_data.get("goal", "")
-        state["persona"] = rehydration_data.get("persona", "senior-backend-dev")
-        save_state(repo_root, state)
-        
-        # Display context information
-        thread_id = rehydration_data.get('thread_id', 'Unknown')
-        goal = rehydration_data.get('goal', '')
-        focus = metadata.get('focus', '')
-        
-        rprint(f"[blue]Context rehydrated from comprehensive snapshot[/blue]")
-        rprint(f"[blue]Thread ID: {thread_id}[/blue]")
-        rprint(f"[blue]Goal: {goal}[/blue]") 
-        rprint(f"[blue]Focus: {focus}[/blue]")
-        
-        if save_local:
-            rprint(f"[green]📁 File saved: ./copidock/rehydrations/{filename}[/green]")
-        
-        # Display the full content (or summary)
-        if not json_out:
-            rprint("\n" + "="*70)
-            rprint("REHYDRATED CONTEXT")
-            rprint("="*70)
-            rprint(markdown_content)
-        else:
-            print(json.dumps({
-                'rehydration_id': rehydration_id,
-                'thread_id': thread_id,
-                'file_path': str(file_path) if save_local else None,
-                'metadata': metadata,
-                'markdown_content': markdown_content
-            }, indent=2))
-            
-    except Exception as e:
-        rprint(f"[red]Error rehydrating: {str(e)}[/red]")
-        raise typer.Exit(1)
+    content = artifact_path.read_text()
+    rprint(content)
     
 if __name__ == "__main__":
     app()
