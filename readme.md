@@ -175,4 +175,39 @@ For early collaborators testing snapshot and rehydrate flows locally:
 
 ---
 
-Built with structure, intent, and a bit of magic. ✨
+---
+
+## 🌉 DevsBridge
+
+**Built with structure, intent, and a bit of magic. ✨**
+
+Copidock is a **productivity enhancement tool** designed to bridge the gap between human reasoning and AI development workflows. Part of the DevsBridge ecosystem — tools that connect developers, infrastructure, and intelligent automation.
+
+---
+
+## 📄 License
+
+Copyright © 2025 DevsBridge
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+---
+
+<div align="center">
+
+🌉 **DevsBridge** — *Connecting Code, Context & Intelligence*
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Beta](https://img.shields.io/badge/Status-Beta-yellow.svg)]()
+
+</div>
