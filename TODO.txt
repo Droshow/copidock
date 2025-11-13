@@ -114,3 +114,20 @@ Implement multiline input support for --interactive mode in Copidock CLI.
 - copidock publish for quick publishing of PRDs specificly polished by hand (copilot)
 - copidock rehydrate - list functions for S3 
 - local rehydration should access and download PRDS from remote (S3)
+
+Outstanding next actions:
+
+Enhance publish
+Finalize --name / force_filename backend support.
+Optional: add --description metadata.
+S3-aware rehydrate
+Add remote subcommand: copidock rehydrate remote list (list S3 objects under prefix).
+Add remote restore: download chosen object to copidock/rehydrations/, update LATEST, display.
+Local auto-download
+If LATEST missing locally: attempt fetch from S3 (thread_id + repo/branch prefix).
+Cache downloaded artifacts.
+UX polish
+Multiline interactive prompts (custom prompt loop).
+Tab completion for persona.
+Help: copidock persona list.
+Cleanup
