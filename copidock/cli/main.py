@@ -513,7 +513,7 @@ def snapshot_cmd(
         print("Empty template structure ready for customization!")
         print("="*70 + "\n")
         
-        # Create empty snapshot
+        # Create empty snapshotƒ
         data = client.create_snapshot(thread_id, [], f"Initial stage template: {message}")
         
         if json_out:
@@ -685,6 +685,93 @@ def restore_rehydration(rehydration_id: str):
     ))
     rprint(content)
 
+@app.command("publish")
+def publish_cmd(
+    file: Path = typer.Argument(..., help="Local hydration markdown to upload"),
+    persona: str = typer.Option("senior-backend-dev", "--persona"),
+    focus: str = typer.Option("enterprise kafka", "--focus"),
+    output: str = typer.Option("PRD", "--output"),
+    constraints: str = typer.Option("HA, security, observability, cost", "--constraints"),
+    stage: str = typer.Option("development", "--stage"),
+    keep_name: bool = typer.Option(True, "--keep-name/--no-keep-name", help="Request original filename remotely"),
+    enforce_name: bool = typer.Option(False, "--enforce-name", help="Force rename in S3 if backend ignores keep_name"),
+    bucket: Optional[str] = typer.Option(None, "--bucket", help="S3 bucket for manual rename (e.g. copidock-store-361abd9f)"),
+    prefix: Optional[str] = typer.Option("rehydrations/development/kafka_project/", "--prefix", help="S3 key prefix"),
+    profile: str = typer.Option(DEFAULT_PROFILE, "--profile"),
+    api: Optional[str] = typer.Option(None, "--api"),
+    json_out: bool = typer.Option(False, "--json")
+):
+    """Upload an existing local hydration markdown to remote storage (S3/API)."""
+    # Validate file
+    if not file.exists():
+        rprint(f"[red]File not found:[/red] {file}")
+        raise typer.Exit(1)
+    if file.suffix != ".md":
+        rprint("[yellow]⚠ Expected a .md hydration artifact[/yellow]")
+    # Load local state
+    repo_root = find_repo_root()
+    state = load_state(repo_root)
+    thread_id = state.get("thread_id")
+    if not thread_id:
+        rprint("[red]No active thread. Start a thread first.[/red]")
+        raise typer.Exit(1)
+    # Resolve API client
+    api_base, api_key, timeout = resolve_api(profile, api)
+    client = CopidockAPI(api_base, api_key, timeout)
+    # Read content
+    content = file.read_text()
+    # Build meta
+    meta = {
+        'persona': persona,
+        'focus': focus,
+        'output': output,
+        'constraints': constraints,
+        'stage': stage,
+        'repo': state.get('repo', ''),
+        'file_count': 0,
+        'commit_count': 0
+    }
+    if keep_name:
+        meta['force_filename'] = file.name
+        meta['force_slug'] = file.stem
+    try:
+        data = client.hydrate_snapshot(thread_id, content, meta)
+        remote_id = data.get('rehydration_id')
+        effective_name = file.name if keep_name else remote_id
+        rename_note = None
+        # Optional S3 rename enforcement
+        if enforce_name and keep_name and bucket and remote_id and remote_id != file.name:
+            import subprocess
+            # Ensure prefix ends with '/'
+            if not prefix.endswith("/"):
+                prefix = prefix + "/"
+            src_key = f"{prefix}{remote_id}"
+            dest_key = f"{prefix}{file.name}"
+            copy_cmd = ["aws","s3","cp",f"s3://{bucket}/{src_key}",f"s3://{bucket}/{dest_key}"]
+            rm_cmd = ["aws","s3","rm",f"s3://{bucket}/{src_key}"]
+            try:
+                subprocess.run(copy_cmd, check=True)
+                subprocess.run(rm_cmd, check=True)
+                effective_name = file.name
+                data['rehydration_id'] = file.name
+                rename_note = "Renamed object in S3."
+            except Exception as rename_err:
+                rename_note = f"Rename failed: {rename_err}"
+        if json_out:
+            data['effective_name'] = effective_name
+            if rename_note:
+                data['rename_note'] = rename_note
+            rprint(data)
+        else:
+            rprint(f"[green]Published hydration[/green]: {effective_name}")
+            if keep_name and remote_id != file.name and not enforce_name:
+                rprint("[dim]Backend ignored force_filename (use --enforce-name with --bucket to rename).[/dim]")
+            if rename_note:
+                rprint(f"[dim]{rename_note}[/dim]")
+            rprint(f"[dim]Source: {file.name} | Stage: {stage}[/dim]")
+    except Exception as e:
+        rprint(f"[red]Error publishing hydration:[/red] {e}")
+        raise typer.Exit(1)
     
 if __name__ == "__main__":
     app()

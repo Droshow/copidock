@@ -110,3 +110,7 @@ Persona template inheritance (base → specialized)
 
 Implement multiline input support for --interactive mode in Copidock CLI.
 → Replace typer.prompt() with a custom prompt_multiline() loop to allow bullet-style entries and blank-line submission.
+
+- copidock publish for quick publishing of PRDs specificly polished by hand (copilot)
+- copidock rehydrate - list functions for S3 
+- local rehydration should access and download PRDS from remote (S3)
