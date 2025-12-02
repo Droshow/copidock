@@ -1,6 +1,6 @@
 [default]
-api_base = "https://3od1br94i1.execute-api.eu-central-1.amazonaws.com"
+api_base = "https://dy34nirv2l.execute-api.eu-central-1.amazonaws.com"
 timeout_secs = 15
 
 [work]
-api_base = "https://3od1br94i1.execute-api.eu-central-1.amazonaws.com"
+api_base = "https://dy34nirv2l.execute-api.eu-central-1.amazonaws.com"

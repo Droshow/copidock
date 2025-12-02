@@ -10,7 +10,13 @@ copidock/cli/__init__.py
 copidock/cli/api.py
 copidock/cli/gather.py
 copidock/cli/main.py
+copidock/cli/synthesis.py
 copidock/cli/commands/__init__.py
 copidock/cli/commands/thread.py
+copidock/cli/synthesis/__init__.py
+copidock/cli/synthesis/analysis.py
+copidock/cli/synthesis/base.py
+copidock/cli/synthesis/development.py
+copidock/cli/synthesis/initial.py
 copidock/config/__init__.py
 copidock/config/config.py
