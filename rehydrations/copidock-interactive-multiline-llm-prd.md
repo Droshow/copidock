@@ -63,7 +63,7 @@ Enhance Copidock's `--interactive` mode to support natural multiline input and o
 
 **Trigger**: Add `--llm-assist` flag to interactive mode
 
-**User Experience**:
+**User Experience**:p
 ```
 🎯 What are you building? (Project vision) [New application]:
 > (Enter your vision. Type /help for AI assistance)

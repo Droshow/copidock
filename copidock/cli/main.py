@@ -23,6 +23,22 @@ def create_rehydration_markdown(thread_data: Dict, synth_sections: Dict, file_pa
     created_at = datetime.utcnow().isoformat() + "Z"
     thread_slug = thread_data.get('goal', 'development-task').lower().replace(' ', '-')
     
+    # Format multiline values properly for YAML
+    focus_text = enhanced_context.get('focus', '').strip()
+    output_text = enhanced_context.get('output', '').strip()
+    constraints_text = enhanced_context.get('constraints', '').strip()
+    
+    # Use YAML literal block scalar (|) for multiline strings
+    def format_yaml_multiline(text: str) -> str:
+        if '\n' in text:
+            # Multiline: use literal block scalar with proper indentation
+            lines = text.split('\n')
+            formatted = '|\n  ' + '\n  '.join(lines)
+            return formatted
+        else:
+            # Single line: use quoted string
+            return f'"{text}"'
+    
     frontmatter = f"""---
 thread_id: {thread_data.get('thread_id', '')}
 thread_slug: {thread_slug}
@@ -33,9 +49,9 @@ repo: {thread_data.get('repo', 'unknown')}
 branch: {thread_data.get('branch', 'main')}
 goal: "{thread_data.get('goal', 'development task')}"
 persona: {enhanced_context.get('persona', 'senior-backend-dev')}
-focus: "{enhanced_context.get('focus', '')}"
-output: "{enhanced_context.get('output', '')}"
-constraints: "{enhanced_context.get('constraints', '')}"
+focus: {format_yaml_multiline(focus_text)}
+output: {format_yaml_multiline(output_text)}
+constraints: {format_yaml_multiline(constraints_text)}
 file_count: {len(file_paths)}
 commit_count: {len(recent_commits)}
 ---

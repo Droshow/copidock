@@ -131,3 +131,5 @@ Multiline interactive prompts (custom prompt loop).
 Tab completion for persona.
 Help: copidock persona list.
 Cleanup
+
+only when you use --hydrate flag you will end up in both S3 and locally

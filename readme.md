@@ -20,7 +20,7 @@ We're building a **serverless note and context management system** powered by:
 Each snapshot bridges **prompt engineering** and **software state management**.  
 It captures:
 - **Who** — persona (e.g., Cloud Infra Engineer, Backend Dev)
-- **What** — goal, focus, expected outputs
+- **What** — goal, focus, expected outputcs
 - **When/Where** — commit, repo, branch
 - **How** — reasoning and operator instructions
 
@@ -48,6 +48,9 @@ For structured guidance and persona loading:
 
 ```bash
 copidock snapshot create --interactive --stage initial --comprehensive --hydrate
+# opens up nano or vi to make multiple lines prompts
+COPIDOCK_EDITOR_MODE=inline copidock snapshot create --comprehensive --interactive --hydrate 
+# opens up single CLI liner
 ```
 
 - `--stage initial` → Greenfield / PRD setup template

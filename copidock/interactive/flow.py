@@ -3,6 +3,7 @@
 import typer
 from rich import print as rprint
 from typing import Dict, Optional, Any, List
+from .prompts import prompt_multiline, prompt_single
 
 def run_interactive_flow(
     context: Dict[str, Any], 
@@ -19,40 +20,46 @@ def run_interactive_flow(
     
     # Interactive prompts with smart defaults (stage-aware)
     if stage == "initial":
-        # Initial stage - no git-based suggestions
-        focus = typer.prompt(
-            "🎯 What are you building? (Project vision)",
-            default=default_focus or "New application"
+        # Initial stage - business/vision-focused prompts
+        focus = prompt_multiline(
+            "🎯 What are you trying to build or achieve?",
+            default=default_focus or "New application",
+            help_text="Describe the project vision, problem you're solving, or value you're creating"
         )
         
-        output = typer.prompt(
-            "🏆 What does success look like? (Expected outcomes)",
-            default=default_output or "Working MVP"
+        output = prompt_multiline(
+            "🏆 What does success look like?",
+            default=default_output or "Working MVP",
+            help_text="Describe in a few lines what you're expecting from this implementation - high-level outcomes"
         )
         
-        constraints = typer.prompt(
-            "⚡ Key requirements/constraints",
-            default=default_constraints or "best practices"
+        constraints = prompt_multiline(
+            "⚡ What are your project constraints or guardrails?",
+            default=default_constraints or "best practices",
+            help_text="e.g., budget limits, technology preferences, timeline, performance requirements, team size"
         )
         
     else:
-        # Development stage - use git analysis for suggestions
+        # Development stage - implementation-focused prompts with git context
         focus = prompt_with_smart_default(
-            "Focus", 
+            "🎯 What are you trying to achieve in this session?",
             default_focus or context['detected_focus'],
-            context['detected_focus']
+            context['detected_focus'],
+            help_text="Current implementation goal - what you're building or NOT trying to build"
         )
         
         output = prompt_with_smart_default(
-            "Expected output",
+            "🏆 What's the expected outcome?",
             default_output or context['suggested_output'],
-            context['suggested_output']
+            context['suggested_output'],
+            help_text="Describe what working implementation looks like for this session"
         )
         
         constraints = prompt_with_smart_default(
-            "Constraints",
+            "⚡ What constraints are guiding this work?",
             default_constraints or ", ".join(context['detected_constraints']),
-            ", ".join(context['detected_constraints'])
+            ", ".join(context['detected_constraints']),
+            help_text="e.g., must maintain backwards compatibility, performance targets, code style requirements"
         )
     
     # Show available personas
@@ -74,29 +81,32 @@ def display_detected_context(context: Dict[str, Any], stage: str = "development"
     if stage == "initial":
         # Greenfield project - welcoming message
         rprint("[bold green]🌱 Welcome to Copidock![/bold green]")
-        rprint("[dim]Let's plan your new project from scratch and create a solid foundation.[/dim]\n")
+        rprint("[dim]Let's define your project vision and create a comprehensive PRD foundation.[/dim]\n")
         
         # Show minimal repo info only
-        rprint(f"[dim]> Starting fresh in: {context.get('repo', 'unknown')} (branch: {context.get('branch', 'main')})[/dim]")
-        rprint("[dim]> This is a greenfield project - no existing code to analyze[/dim]")
-        rprint("[dim]> Let's define your vision and create a solid foundation![/dim]\n")
+        rprint(f"[dim]📁 Repository: {context.get('repo', 'unknown')} (branch: {context.get('branch', 'main')})[/dim]")
+        rprint("[dim]🎯 Mode: Initial setup - focus on business context and vision[/dim]")
+        rprint("[dim]💡 Your input will guide AI to generate the complete PRD[/dim]\n")
         
-        rprint("✨ Ready to build something amazing? Let's start with your project goals:\n")
+        rprint("✨ Let's establish the business context for your project:\n")
         
     else:
         # Development stage - show git analysis
-        rprint(f"[dim]> Detected repo: {context['repo']} (branch: {context['branch']})[/dim]")
-        rprint(f"[dim]> Recent activity: {context['commit_count']} commits, {context['file_count']} files modified[/dim]")
+        rprint("[bold blue]🔧 Development Session Snapshot[/bold blue]")
+        rprint("[dim]Using recent git activity to suggest context...[/dim]\n")
+        
+        rprint(f"[dim]📁 Repository: {context['repo']} (branch: {context['branch']})[/dim]")
+        rprint(f"[dim]📊 Recent activity: {context['commit_count']} commits, {context['file_count']} files modified[/dim]")
         
         # Show recent commits for context
         if context['recent_commits']:
-            rprint("[dim]> Recent commits:[/dim]")
+            rprint("\n[dim]📝 Recent commits:[/dim]")
             for commit in context['recent_commits'][:2]:  # Show top 2
                 rprint(f"[dim]  • {commit['hash']}: {commit['message'][:50]}... ({commit['time']})[/dim]")
         
         # Show key modified files
         if context['modified_files']:
-            rprint("[dim]> Key modified files:[/dim]")
+            rprint("\n[dim]📄 Key modified files:[/dim]")
             for file_path in context['modified_files'][:3]:  # Show top 3
                 rprint(f"[dim]  • {file_path}[/dim]")
             
@@ -104,23 +114,25 @@ def display_detected_context(context: Dict[str, Any], stage: str = "development"
                 remaining = len(context['modified_files']) - 3
                 rprint(f"[dim]  ... and {remaining} more files[/dim]")
         
-        rprint()
+        rprint("\n[dim]💭 Review the suggestions below and adjust as needed:[/dim]\n")
 
 def prompt_with_smart_default(
     prompt_text: str, 
     user_default: Optional[str], 
-    detected_value: str
+    detected_value: str,
+    help_text: Optional[str] = None
 ) -> str:
     """Prompt with smart default, showing detection reasoning"""
     
     if user_default and user_default != detected_value:
         # User provided different value than detected
-        rprint(f"[dim]> Detected: \"{detected_value}\" | Using provided: \"{user_default}\"[/dim]")
-        return typer.prompt(prompt_text, default=user_default)
+        rprint(f"[dim]💡 Detected from git: \"{detected_value}\"[/dim]")
+        rprint(f"[dim]   Using your value: \"{user_default}\"[/dim]\n")
+        return prompt_multiline(prompt_text, default=user_default, help_text=help_text)
     else:
         # Use detected value as default
-        rprint(f"[dim]> Suggested {prompt_text.lower()}: \"{detected_value}\" (from recent changes)[/dim]")
-        return typer.prompt(prompt_text, default=detected_value)
+        rprint(f"[dim]💡 Suggested from recent changes: \"{detected_value}\"[/dim]\n")
+        return prompt_multiline(prompt_text, default=detected_value, help_text=help_text)
 
 def confirm_snapshot_creation(stage: str,params: Dict[str, str], context: Dict[str, Any]) -> bool:
     """Show summary and confirm snapshot creation"""
