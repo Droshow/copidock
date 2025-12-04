@@ -1,0 +1,178 @@
+domain: fintech
+display_name: "Financial Technology"
+description: "Payment processing, banking, and financial services with PCI-DSS compliance"
+
+additional_questions:
+  - prompt: "💳 Payment data handling?"
+    help_text: "Credit cards, bank accounts, crypto? Direct processing or third-party (Stripe)?"
+    key: payment_scope
+    default: "Credit card payments via Stripe (no card data storage)"
+  
+  - prompt: "🏦 Transaction volume expectations?"
+    help_text: "Transactions per day? Peak periods? Transaction amounts (micro vs enterprise)?"
+    key: transaction_volume
+    default: "10K transactions/day, $50 average ticket"
+  
+  - prompt: "📜 Regulatory compliance?"
+    help_text: "PCI-DSS, SOC 2, FinCEN, state money transmitter licenses? International regulations?"
+    key: compliance_requirements
+    default: "PCI-DSS Level 2, SOC 2 Type II"
+
+  - prompt: "🔄 Reconciliation needs?"
+    help_text: "How to handle failed transactions? Refunds? Chargebacks? Settlement timing?"
+    key: reconciliation_strategy
+    default: "Daily reconciliation, automated retry logic, chargeback handling"
+
+synthesis_hints:
+  technical_approach: |
+    **Fintech Architecture Recommendations**:
+    - Never store credit card numbers (use tokenization via payment gateway)
+    - PCI-DSS scoped environment isolation (minimize cardholder data environment)
+    - Idempotent transaction processing (prevent double charges)
+    - Double-entry bookkeeping for ledger accuracy
+    - Transaction atomicity (all-or-nothing with rollback)
+    - Immutable transaction logs (append-only, cryptographically signed)
+    - Real-time fraud detection and velocity checks
+    - Reconciliation engine for payment gateway settlement
+    
+    **Key Implementation Patterns**:
+    - Event sourcing for financial transactions (audit trail)
+    - Saga pattern for distributed transactions
+    - Circuit breaker for payment gateway calls
+    - Retry logic with exponential backoff and idempotency keys
+    - Asynchronous webhooks for payment status updates
+    - Strong consistency for balances (avoid eventual consistency)
+    
+  technology_stack: |
+    **Backend Framework Options**:
+    - **Node.js**: NestJS with Stripe SDK, financial libraries
+    - **Python**: Django with django-money, decimal precision
+    - **Java**: Spring Boot with BigDecimal, JPA transactions
+    - **Go**: High performance, strong concurrency for ledger operations
+    
+    **Payment Integration**:
+    - Stripe, Braintree, Adyen (PCI-DSS Level 1 providers)
+    - Plaid for bank account linking and ACH
+    - Coinbase Commerce for cryptocurrency payments
+    - PayPal/Venmo for alternative payment methods
+    
+    **Database & Ledger**:
+    - PostgreSQL with ACID transactions, serializable isolation
+    - Aurora PostgreSQL for high availability
+    - Redis for rate limiting and caching (non-financial data)
+    - Ledger-specific databases (TigerBeetle, Ledger.co)
+    
+    **Fraud Prevention**:
+    - Sift, Riskified, Stripe Radar for fraud detection
+    - Device fingerprinting and IP geolocation
+    - Velocity checks (transactions per time period)
+    - 3D Secure (3DS2) for card-not-present transactions
+    
+  risks: |
+    **Fintech-Specific Risks & Mitigations**:
+    
+    1. **Payment Data Breach** (CRITICAL)
+       - Risk: Stored card data compromised, PCI-DSS fines ($50K-$500K/month), brand damage
+       - Mitigation: Never store card data, use payment gateway tokens, PCI-DSS compliance certification
+    
+    2. **Double Charging / Duplicate Transactions** (HIGH)
+       - Risk: Customer charged twice, disputes, refunds, reputation damage
+       - Mitigation: Idempotency keys on all transactions, client-side deduplication, transaction ID tracking
+    
+    3. **Fraudulent Transactions** (HIGH)
+       - Risk: Chargebacks, financial loss (merchant liable), account for 1-5% of revenue
+       - Mitigation: Fraud detection ML models, velocity limits, 3D Secure, manual review queues
+    
+    4. **Ledger Inconsistency** (HIGH)
+       - Risk: Balance mismatch, regulatory audit failures, customer trust loss
+       - Mitigation: Double-entry bookkeeping, periodic reconciliation, immutable audit logs
+    
+    5. **Payment Gateway Downtime** (MEDIUM)
+       - Risk: Cannot process payments, revenue loss, customer frustration
+       - Mitigation: Multiple payment gateway failover, queue pending transactions, status page
+    
+    6. **Regulatory Compliance Violations** (HIGH)
+       - Risk: Fines, license revocation, operational shutdown
+       - Mitigation: Regular compliance audits (PCI-DSS annual, SOC 2 bi-annual), legal counsel
+    
+  best_practices: |
+    **PCI-DSS Compliance Practices**:
+    - Use payment gateway (Stripe, Braintree) to avoid PCI scope
+    - If storing card data: PCI-DSS Level 1 certification required
+    - Quarterly vulnerability scanning (Approved Scanning Vendor)
+    - Annual penetration testing by QSA (Qualified Security Assessor)
+    - Encrypt cardholder data transmission (TLS 1.2+)
+    - Restrict access to cardholder data (need-to-know basis)
+    - Unique IDs for all users, track all access to data
+    - Regular security awareness training for employees
+    
+    **Transaction Processing**:
+    - Use decimal types (never float) for money (JavaScript: decimal.js)
+    - Idempotency keys for all state-changing operations
+    - Transaction atomicity with database transactions (BEGIN/COMMIT/ROLLBACK)
+    - Retry failed transactions with exponential backoff
+    - Timeout external calls (payment gateway) at 30 seconds
+    - Implement circuit breaker for gateway failures
+    - Store transaction metadata (IP, device ID, timestamp)
+    - Reconcile daily with payment gateway settlement reports
+    
+    **Security Implementation**:
+    - Rate limiting on payment endpoints (5 attempts/minute per user)
+    - IP whitelisting for webhook callbacks from payment gateways
+    - Webhook signature verification (HMAC validation)
+    - Two-factor authentication for withdrawals
+    - Fraud scoring on all transactions (machine learning)
+    - Monitoring for suspicious patterns (velocity, geography)
+    
+    **Observability & Auditing**:
+    - Log all financial transactions (who, what, when, how much)
+    - Immutable audit logs (write-only, cryptographically signed)
+    - Real-time alerting on failed transactions (>1% failure rate)
+    - Dashboard for transaction volumes, success rates, fraud rates
+    - Reconciliation reports (compare internal ledger vs gateway settlement)
+    
+  anti_patterns: |
+    **Critical Mistakes to Avoid**:
+    - ❌ Storing credit card numbers (PCI-DSS violation, massive liability)
+    - ❌ Using float/double for money calculations (rounding errors)
+    - ❌ No idempotency keys (double charging risk)
+    - ❌ Eventual consistency for balances (account drift)
+    - ❌ No transaction retry logic (poor user experience)
+    - ❌ Missing fraud detection (high chargeback rates)
+    - ❌ No rate limiting on payment endpoints (abuse, fraud)
+    - ❌ Not validating webhook signatures (spoofing attacks)
+    - ❌ No reconciliation process (ledger inconsistencies)
+    - ❌ Synchronous payment processing (timeout issues)
+
+recommended_tools:
+  - name: "Stripe / Braintree"
+    purpose: "Payment gateway (PCI-DSS Level 1 compliant)"
+    url: "https://stripe.com"
+  
+  - name: "Plaid"
+    purpose: "Bank account linking and ACH payments"
+    url: "https://plaid.com"
+  
+  - name: "Sift / Stripe Radar"
+    purpose: "Fraud detection and prevention"
+    url: "https://sift.com"
+  
+  - name: "Ledger.co / TigerBeetle"
+    purpose: "Purpose-built ledger databases"
+    url: "https://ledger.co"
+  
+  - name: "PCI Security Standards"
+    purpose: "PCI-DSS compliance documentation"
+    url: "https://www.pcisecuritystandards.org"
+
+testing_checklist:
+  - "✅ No credit card data stored in database"
+  - "✅ Payment gateway tokenization works"
+  - "✅ Idempotency prevents double charging"
+  - "✅ Decimal precision for all money calculations"
+  - "✅ Transaction atomicity (all-or-nothing)"
+  - "✅ Failed transactions retry automatically"
+  - "✅ Fraud detection flags suspicious transactions"
+  - "✅ Webhook signatures validated (HMAC)"
+  - "✅ Rate limiting on payment endpoints"
+  - "✅ Daily reconciliation matches payment gateway"

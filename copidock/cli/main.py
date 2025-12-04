@@ -39,6 +39,30 @@ def create_rehydration_markdown(thread_data: Dict, synth_sections: Dict, file_pa
             # Single line: use quoted string
             return f'"{text}"'
     
+    def format_domain_section(ctx: Dict) -> str:
+        """Format domain and domain_context for YAML frontmatter"""
+        domain = ctx.get('domain')
+        if not domain:
+            return ''
+        
+        domain_context = ctx.get('domain_context', {})
+        if not domain_context:
+            return f'domain: {domain}'
+        
+        # Build domain_context section
+        lines = [f'domain: {domain}', 'domain_context:']
+        for key, value in domain_context.items():
+            if '\n' in str(value):
+                # Multiline value
+                value_lines = str(value).split('\n')
+                lines.append(f'  {key}: |')
+                for vline in value_lines:
+                    lines.append(f'    {vline}')
+            else:
+                # Single line
+                lines.append(f'  {key}: "{value}"')
+        return '\n'.join(lines)
+    
     frontmatter = f"""---
 thread_id: {thread_data.get('thread_id', '')}
 thread_slug: {thread_slug}
@@ -54,12 +78,28 @@ output: {format_yaml_multiline(output_text)}
 constraints: {format_yaml_multiline(constraints_text)}
 file_count: {len(file_paths)}
 commit_count: {len(recent_commits)}
+{format_domain_section(enhanced_context)}
 ---
 
 # Rehydrate: {thread_data.get('goal', 'Development Task')}
 
 ## Context Restoration
 """
+    
+    # Add domain context section if present
+    domain = enhanced_context.get('domain')
+    domain_context = enhanced_context.get('domain_context', {})
+    if domain and domain_context:
+        from ..interactive.domains import get_domain_display_name
+        domain_display = get_domain_display_name(domain)
+        frontmatter += f"\n\n## 🎯 Domain: {domain_display}\n\n"
+        frontmatter += "**Domain-Specific Requirements:**\n\n"
+        for key, value in domain_context.items():
+            # Convert key from snake_case to Title Case
+            label = key.replace('_', ' ').title()
+            frontmatter += f"- **{label}**: {value}\n"
+        frontmatter += "\n"
+    
     # Render all available synth sections (only strings)
     ordered_keys = [
         'operator_instructions',
@@ -67,7 +107,11 @@ commit_count: {len(recent_commits)}
         'current_development_state',
         'decisions_constraints',
         'technical_approach',
+        'technology_stack',  # Domain-specific
         'development_priorities',
+        'risks',  # Domain-specific
+        'best_practices',  # Domain-specific
+        'anti_patterns',  # Domain-specific
         'open_questions',
         'next_steps',
     ]
@@ -239,6 +283,7 @@ def snapshot_cmd(
     # Interactive and intelligence modes
     interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
     auto_detect: bool = typer.Option(True, "--auto-detect", help="Auto-detect context from git and files"),
+    domain: Optional[str] = typer.Option(None, "--domain", help="Domain template: pwa, api-service, healthcare, fintech, ml-pipeline"),
 
     # NEW: Optional CLI polish parameters
 #     to be able to do this in the future: 
@@ -308,13 +353,16 @@ def snapshot_cmd(
         context = auto_detect_context(repo_root, since)
         
         # Interactive prompting with smart defaults
-        interactive_params = run_interactive_flow(context, persona, focus, output, constraints, detected_stage)
+        interactive_params = run_interactive_flow(context, persona, focus, output, constraints, detected_stage, domain)
         
         # Use interactive parameters
         focus = interactive_params['focus']
         output = interactive_params['output']
         constraints = interactive_params['constraints']
         persona = interactive_params['persona']
+        
+        # Store domain-specific answers
+        domain_context = interactive_params.get('domain_context', {})
         
         # Show summary and confirm
         if not confirm_snapshot_creation(detected_stage, interactive_params, context):
@@ -348,8 +396,13 @@ def snapshot_cmd(
                 'output': output, 
                 'constraints': constraints,
                 'stage': detected_stage,
-                'persona': persona
+                'persona': persona,
+                'domain': domain
             }
+            
+            # Add domain-specific context if interactive mode was used
+            if interactive and 'domain_context' in locals():
+                enhanced_context['domain_context'] = domain_context
             
             # Generate synthesis sections based on stage
             if detected_stage == "initial":

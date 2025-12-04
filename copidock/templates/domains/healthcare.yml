@@ -1,0 +1,170 @@
+domain: healthcare
+display_name: "Healthcare Application"
+description: "HIPAA-compliant healthcare applications handling PHI and patient data"
+
+additional_questions:
+  - prompt: "🏥 Type of health data handled?"
+    help_text: "EHR/EMR, medical imaging, lab results, prescriptions, telehealth? What PHI is involved?"
+    key: health_data_types
+    default: "Patient demographics, medical records, lab results"
+  
+  - prompt: "📋 Compliance requirements?"
+    help_text: "HIPAA, GDPR, HITRUST, state-specific regulations?"
+    key: compliance_scope
+    default: "HIPAA compliance required"
+  
+  - prompt: "🔐 Access control needs?"
+    help_text: "Role-based access? Break-glass procedures? Audit logging requirements?"
+    key: access_control
+    default: "RBAC with comprehensive audit logging"
+
+  - prompt: "🔄 Data retention policy?"
+    help_text: "How long to retain records? Archival strategy? Deletion procedures?"
+    key: retention_policy
+    default: "7 years retention, encrypted archival, secure deletion"
+
+synthesis_hints:
+  technical_approach: |
+    **Healthcare Architecture Recommendations**:
+    - PHI encryption at rest (AES-256) and in transit (TLS 1.2+)
+    - Role-Based Access Control (RBAC) with least privilege principle
+    - Comprehensive audit logging (who accessed what, when, why)
+    - Data anonymization/de-identification for analytics
+    - Secure backup and disaster recovery (encrypted, geographically distributed)
+    - Break-glass emergency access procedures with heightened logging
+    - Session management with automatic timeout (15-30 minutes)
+    - Multi-factor authentication for all users
+    
+    **Key Implementation Patterns**:
+    - Zero-trust architecture (verify every request)
+    - Data loss prevention (DLP) controls
+    - Secure API design with token-based authentication
+    - Database encryption at column level for PHI
+    - Immutable audit logs (append-only, tamper-evident)
+    
+  technology_stack: |
+    **Backend Framework Options**:
+    - **Node.js**: NestJS with HIPAA modules
+    - **Python**: Django with healthcare extensions, FastAPI with security middleware
+    - **Java**: Spring Boot with Spring Security (FIPS mode)
+    - **.NET**: ASP.NET Core with healthcare libraries
+    
+    **Database & Storage**:
+    - PostgreSQL with transparent data encryption (TDE)
+    - AWS RDS with encryption at rest enabled
+    - S3 with KMS encryption for documents/imaging
+    - Redis with encryption for caching (optional PHI)
+    
+    **Authentication & Authorization**:
+    - OAuth2 + OIDC (OpenID Connect) for SSO
+    - SAML 2.0 for enterprise identity federation
+    - MFA enforced (TOTP, SMS, biometric)
+    - Session tokens with short TTL (15 minutes)
+    
+    **Compliance & Audit**:
+    - CloudTrail, GuardDuty (AWS) for infrastructure audit
+    - Application-level audit logs with SIEM integration
+    - Encryption key management (AWS KMS, Azure Key Vault)
+    - Regular penetration testing and vulnerability scanning
+    
+  risks: |
+    **Healthcare-Specific Risks & Mitigations**:
+    
+    1. **PHI Data Breach** (CRITICAL)
+       - Risk: Unauthorized access to patient data, regulatory fines ($100-$50K per violation)
+       - Mitigation: Encryption everywhere, strict access controls, regular security audits, incident response plan
+    
+    2. **Insufficient Audit Logging** (HIGH)
+       - Risk: Cannot prove compliance, HIPAA audit failures
+       - Mitigation: Log all PHI access (read/write/delete), immutable logs, 7-year retention
+    
+    3. **Insider Threats** (HIGH)
+       - Risk: Employees accessing PHI without legitimate need
+       - Mitigation: Least privilege access, monitoring anomalous access patterns, background checks
+    
+    4. **Data Retention Violations** (MEDIUM)
+       - Risk: Deleting records too early or keeping too long, legal liability
+       - Mitigation: Automated retention policy enforcement, legal holds, secure deletion procedures
+    
+    5. **Third-Party Vendor Risk** (MEDIUM)
+       - Risk: Business Associate Agreement (BAA) violations by vendors
+       - Mitigation: BAA contracts with all vendors handling PHI, vendor security assessments
+    
+    6. **Ransomware Attacks** (HIGH)
+       - Risk: Patient care disruption, data held hostage, HIPAA breach notification
+       - Mitigation: Offline encrypted backups, endpoint protection, employee training, incident response plan
+    
+  best_practices: |
+    **HIPAA Compliance Practices**:
+    - Business Associate Agreements (BAA) with all vendors touching PHI
+    - Risk assessment and management program (annual reviews)
+    - Security policies and procedures documentation
+    - Workforce training on HIPAA (annual, documented)
+    - Breach notification procedures (60 days to notify HHS)
+    - Minimum necessary rule (only access PHI needed for task)
+    - Patient rights procedures (access, amendment, accounting)
+    - Designated Privacy Officer and Security Officer
+    
+    **Security Implementation**:
+    - Encrypt PHI at rest (AES-256) and in transit (TLS 1.2+)
+    - Unique user IDs, automatic log-off (15-30 min)
+    - Emergency access procedures (break-glass with audit)
+    - Data backup plan with encryption (tested quarterly)
+    - Disaster recovery plan (RPO < 1 hour, RTO < 4 hours)
+    - Patch management (critical patches within 30 days)
+    - Network segmentation (isolate PHI systems)
+    - Intrusion detection/prevention systems (IDS/IPS)
+    
+    **Development Practices**:
+    - Never log PHI in application logs (use patient IDs instead)
+    - Parameterized queries to prevent SQL injection
+    - Input validation and output encoding
+    - Security code reviews and SAST/DAST scanning
+    - PHI redaction in non-production environments
+    - Secure API design (no PHI in URLs/query params)
+    
+  anti_patterns: |
+    **Critical Mistakes to Avoid**:
+    - ❌ Storing PHI in plaintext (massive HIPAA violation)
+    - ❌ Logging PHI in application logs (audit failure)
+    - ❌ Using production data in development/test (breach risk)
+    - ❌ No audit logs or insufficient retention (<6 years)
+    - ❌ Weak authentication (no MFA, weak passwords)
+    - ❌ Sharing accounts or credentials (audit trail broken)
+    - ❌ No Business Associate Agreements with vendors (compliance failure)
+    - ❌ Missing breach notification procedures (legal liability)
+    - ❌ No encryption at rest or in transit (HIPAA violation)
+    - ❌ Over-permissive access controls (minimum necessary rule)
+
+recommended_tools:
+  - name: "HIPAA Compliance Checklist"
+    purpose: "Comprehensive HIPAA requirements guide"
+    url: "https://www.hhs.gov/hipaa"
+  
+  - name: "AWS HIPAA Compliance"
+    purpose: "AWS services eligible for HIPAA workloads"
+    url: "https://aws.amazon.com/compliance/hipaa-compliance/"
+  
+  - name: "Vanta / Drata"
+    purpose: "Automated compliance monitoring (HIPAA, SOC 2)"
+    url: "https://www.vanta.com"
+  
+  - name: "1Password / Vault"
+    purpose: "Secrets management and credential rotation"
+    url: "https://www.hashicorp.com/products/vault"
+  
+  - name: "OWASP Healthcare"
+    purpose: "Security guidelines for healthcare applications"
+    url: "https://owasp.org"
+
+testing_checklist:
+  - "✅ All PHI encrypted at rest (AES-256)"
+  - "✅ All PHI encrypted in transit (TLS 1.2+)"
+  - "✅ MFA enforced for all users"
+  - "✅ Audit logging captures all PHI access"
+  - "✅ Audit logs retained for 7 years minimum"
+  - "✅ Role-based access control (RBAC) implemented"
+  - "✅ Session timeout works (15-30 minutes)"
+  - "✅ PHI not logged in application logs"
+  - "✅ Business Associate Agreements signed with vendors"
+  - "✅ Breach notification procedures documented and tested"

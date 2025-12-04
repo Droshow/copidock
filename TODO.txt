@@ -133,3 +133,60 @@ Help: copidock persona list.
 Cleanup
 
 only when you use --hydrate flag you will end up in both S3 and locally
+
+// 12/4/2025 Some kind of copidock status it requires like git status
+
+****** THREADING ******
+***********************
+❯ copidock thread start advent-calendar development
+Usage: copidock thread [OPTIONS] ACTION [GOAL]
+Try 'copidock thread --help' for help.
+╭─ Error ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Got unexpected extra argument (development)                                                                                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+advent-calendar on  main [?] 
+❯ copidock thread start advent-calendar-setup      
+Auto-detected: advent-calendar- (branch: main)
+Thread started: advent-calendar-setup
+ID: b5f12a87-c473-4428-84c4-3c9caa5aa050
+
+*****COPIDOCK STATUS*****
+❯ copidock thread --help
+                                                                                                                                                                                       
+ Usage: copidock thread [OPTIONS] ACTION [GOAL]                                                                                                                                        
+                                                                                                                                                                                       
+ Thread management                                                                                                                                                                     
+                                                                                                                                                                                       
+╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    action      TEXT    Action: start [required]                                                                                                                                   │
+│      goal        [GOAL]  Thread goal                                                                                                                                                │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --repo           TEXT  Repository name                                                                                                                                              │
+│ --branch         TEXT  Branch name                                                                                                                                                  │
+│ --persona        TEXT  Template persona to use [default: senior-backend-dev]                                                                                                        │
+│ --profile        TEXT  Config profile [default: default]                                                                                                                            │
+│ --api            TEXT  API base URL                                                                                                                                                 │
+│ --json                 JSON output                                                                                                                                                  │
+│ --help                 Show this message and exit.                                                                                                                                  │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+advent-calendar on  main [?] 
+❯ copidock thread       
+Usage: copidock thread [OPTIONS] ACTION [GOAL]
+Try 'copidock thread --help' for help.
+╭─ Error ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Missing argument 'ACTION'.                                                                                                                                                          │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+advent-calendar on  main [?] 
+❯ copidock status
+Usage: copidock [OPTIONS] COMMAND [ARGS]...
+Try 'copidock --help' for help.
+╭─ Error ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ No such command 'status'.                                                                                                                                                           │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+advent-calendar on  main [?] 
+❯ 

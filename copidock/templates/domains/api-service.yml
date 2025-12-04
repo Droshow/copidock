@@ -1,0 +1,177 @@
+domain: api-service
+display_name: "API Service"
+description: "RESTful or GraphQL backend services with robust API design"
+
+additional_questions:
+  - prompt: "🔌 API style preference?"
+    help_text: "REST, GraphQL, gRPC, or hybrid? What fits your use case best?"
+    key: api_style
+    default: "RESTful with OpenAPI specification"
+  
+  - prompt: "🔐 Authentication strategy?"
+    help_text: "JWT, OAuth2, API keys, mTLS? Session-based or stateless?"
+    key: auth_strategy
+    default: "JWT with refresh tokens"
+  
+  - prompt: "📊 Expected request volume?"
+    help_text: "Requests per second? Peak vs average load? Growth projections?"
+    key: load_expectations
+    default: "1000 req/s average, 5000 req/s peak"
+
+  - prompt: "🌍 Geographic distribution?"
+    help_text: "Single region or multi-region? CDN needed? Latency requirements?"
+    key: distribution
+    default: "Single region with CDN for static content"
+
+synthesis_hints:
+  technical_approach: |
+    **API Architecture Recommendations**:
+    - RESTful design following HTTP semantics (GET, POST, PUT, PATCH, DELETE)
+    - Versioning strategy (URL path /api/v1/ or headers)
+    - OpenAPI/Swagger specification for documentation
+    - Rate limiting per client/API key (token bucket or sliding window)
+    - Request validation with JSON Schema or similar
+    - Response pagination with cursor-based or offset/limit
+    - HATEOAS for discoverability (optional, REST Level 3)
+    - Content negotiation (Accept header for JSON, XML, etc.)
+    
+    **Key Implementation Patterns**:
+    - Circuit breaker for downstream service failures
+    - Retry logic with exponential backoff
+    - Idempotency keys for safe retries (POST, PATCH)
+    - Request correlation IDs for tracing
+    - Health check endpoints (/health, /readiness)
+    - Graceful shutdown handling
+    
+  technology_stack: |
+    **Backend Framework Options**:
+    - **Node.js**: Express, Fastify, NestJS (TypeScript)
+    - **Python**: FastAPI, Django REST, Flask-RESTful
+    - **Go**: Chi, Gin, Echo (high performance)
+    - **Java**: Spring Boot, Micronaut, Quarkus
+    - **Rust**: Axum, Actix-web, Rocket (ultra performance)
+    
+    **API Gateway & Management**:
+    - Kong, Tyk, or AWS API Gateway
+    - Rate limiting, authentication, request transformation
+    - API analytics and monitoring
+    
+    **Data Layer**:
+    - PostgreSQL with connection pooling (PgBouncer)
+    - Redis for caching and session storage
+    - ElasticSearch for full-text search
+    - S3 or object storage for files
+    
+    **Infrastructure**:
+    - Docker containers with Kubernetes orchestration
+    - Auto-scaling based on CPU/memory/request metrics
+    - Load balancer (ALB, Nginx, HAProxy)
+    - CDN for static assets (CloudFront, Cloudflare)
+    
+  risks: |
+    **API Service Risks & Mitigations**:
+    
+    1. **Rate Limiting Bypass** (HIGH)
+       - Risk: Clients abuse API, causing service degradation
+       - Mitigation: Multi-layer rate limiting (IP, user, API key), CAPTCHA for suspicious traffic
+    
+    2. **Breaking Changes** (HIGH)
+       - Risk: API changes break existing clients, angry users
+       - Mitigation: API versioning, deprecation notices, backwards compatibility for 6-12 months
+    
+    3. **Authentication Vulnerabilities** (HIGH)
+       - Risk: Token theft, replay attacks, privilege escalation
+       - Mitigation: Short-lived JWTs (15min), refresh token rotation, HTTPS only, CORS properly configured
+    
+    4. **Database Connection Pool Exhaustion** (MEDIUM)
+       - Risk: Spike in traffic exhausts DB connections, service hangs
+       - Mitigation: Connection pooling with timeouts, circuit breaker, read replicas for queries
+    
+    5. **Unbounded Query Performance** (MEDIUM)
+       - Risk: Expensive queries (N+1, missing indexes) slow down API
+       - Mitigation: Query optimization, database indexes, query timeouts, pagination enforcement
+    
+    6. **Dependency Failures** (MEDIUM)
+       - Risk: Downstream service outage cascades to your API
+       - Mitigation: Circuit breakers, fallback responses, async processing where possible
+    
+  best_practices: |
+    **API Design Best Practices**:
+    - Use semantic HTTP status codes (200, 201, 400, 401, 404, 500)
+    - Consistent error response format across all endpoints
+    - Include request ID in error responses for debugging
+    - Use ETags for conditional requests (If-None-Match)
+    - Support CORS properly with preflight OPTIONS
+    - Implement proper logging (structured JSON logs)
+    - Use UUID v4 for resource IDs (not sequential integers)
+    - Return 429 Too Many Requests with Retry-After header
+    
+    **Security Practices**:
+    - Input validation on all endpoints (whitelist, not blacklist)
+    - SQL injection prevention (parameterized queries, ORMs)
+    - XSS prevention (escape outputs, CSP headers)
+    - CSRF tokens for state-changing operations
+    - Helmet.js or equivalent for security headers
+    - Rate limiting per endpoint and per client
+    - API key rotation policy (90 days recommended)
+    
+    **Performance Optimizations**:
+    - Cache frequently accessed data (Redis, in-memory)
+    - Database query optimization and indexing
+    - Async processing for heavy tasks (queues, workers)
+    - Compression (gzip, brotli) for large responses
+    - Connection keep-alive and HTTP/2 support
+    - Lazy loading and pagination for large datasets
+    
+    **Observability**:
+    - Distributed tracing (Jaeger, Zipkin, DataDog)
+    - Metrics collection (Prometheus, StatsD)
+    - Centralized logging (ELK stack, CloudWatch)
+    - API analytics (request counts, latency percentiles)
+    - Alerting on error rate spikes and latency increases
+    
+  anti_patterns: |
+    **Common Mistakes to Avoid**:
+    - ❌ No API versioning (breaking changes hurt clients)
+    - ❌ Exposing internal errors to clients (security risk)
+    - ❌ Not implementing rate limiting (DDoS vulnerable)
+    - ❌ Missing input validation (injection attacks)
+    - ❌ Synchronous external API calls (cascade failures)
+    - ❌ Using GET for state-changing operations (not idempotent)
+    - ❌ Returning entire database records (over-fetching)
+    - ❌ No pagination on list endpoints (performance issues)
+    - ❌ Hardcoded secrets in code (use environment variables)
+    - ❌ Not testing API under load (performance surprises)
+
+recommended_tools:
+  - name: "Postman / Insomnia"
+    purpose: "API testing and documentation"
+    url: "https://www.postman.com"
+  
+  - name: "Swagger / OpenAPI"
+    purpose: "API specification and auto-generated docs"
+    url: "https://swagger.io"
+  
+  - name: "k6 / Locust"
+    purpose: "Load testing and performance benchmarking"
+    url: "https://k6.io"
+  
+  - name: "Sentry"
+    purpose: "Error tracking and performance monitoring"
+    url: "https://sentry.io"
+  
+  - name: "DataDog / New Relic"
+    purpose: "APM and distributed tracing"
+    url: "https://www.datadoghq.com"
+
+testing_checklist:
+  - "✅ API returns correct HTTP status codes"
+  - "✅ Error responses include request ID"
+  - "✅ Rate limiting works per client"
+  - "✅ Authentication required on protected endpoints"
+  - "✅ Input validation rejects malformed requests"
+  - "✅ Pagination works on list endpoints"
+  - "✅ API handles concurrent requests gracefully"
+  - "✅ Database connection pool doesn't exhaust"
+  - "✅ API responds under load (1000+ req/s)"
+  - "✅ OpenAPI/Swagger docs are up to date"

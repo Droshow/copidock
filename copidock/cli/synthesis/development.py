@@ -45,6 +45,15 @@ def generate_development_stage_snapshot(thread_data, file_paths, recent_commits,
             )
         }
         
+        # Merge domain-specific synthesis hints if domain is specified
+        domain = enhanced_context.get('domain')
+        if domain:
+            from ...interactive.domains import get_domain_synthesis_hints, merge_synthesis_hints
+            domain_hints = get_domain_synthesis_hints(domain)
+            if domain_hints:
+                rprint(f"[dim]✓ Merging domain-specific guidance for: {domain}[/dim]")
+                sections = merge_synthesis_hints(sections, domain_hints)
+        
         rprint(f"[green]✓ Development synthesis completed successfully[/green]")
         return sections
         

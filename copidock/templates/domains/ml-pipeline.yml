@@ -1,0 +1,184 @@
+domain: ml-pipeline
+display_name: "Machine Learning Pipeline"
+description: "End-to-end ML systems for training, deployment, and monitoring models"
+
+additional_questions:
+  - prompt: "🤖 ML problem type?"
+    help_text: "Classification, regression, clustering, NLP, computer vision, recommendation system?"
+    key: ml_problem_type
+    default: "Classification (binary or multi-class)"
+  
+  - prompt: "📊 Data volume and velocity?"
+    help_text: "Dataset size? Real-time predictions or batch? Data growth rate?"
+    key: data_characteristics
+    default: "100GB dataset, real-time inference, 10% monthly growth"
+  
+  - prompt: "🔄 Model retraining frequency?"
+    help_text: "Continuous learning? Daily, weekly, on-demand? Concept drift monitoring?"
+    key: retraining_strategy
+    default: "Weekly retraining with drift monitoring"
+
+  - prompt: "🎯 Performance requirements?"
+    help_text: "Latency constraints? Throughput needs? Accuracy/precision targets?"
+    key: performance_targets
+    default: "Sub-100ms inference, 95% accuracy minimum"
+
+synthesis_hints:
+  technical_approach: |
+    **ML Pipeline Architecture Recommendations**:
+    - Data versioning with DVC, Pachyderm, or Delta Lake
+    - Feature store for consistent feature engineering (Feast, Tecton)
+    - Model registry for version control (MLflow, Weights & Biases)
+    - Experiment tracking for hyperparameter tuning
+    - CI/CD pipeline for model training and deployment
+    - A/B testing framework for model evaluation in production
+    - Model monitoring for drift detection and performance degradation
+    - Scalable inference serving (batch or real-time)
+    
+    **Key Implementation Patterns**:
+    - Feature engineering pipeline (data preprocessing, transformation)
+    - Model training pipeline (automated retraining on schedule)
+    - Model evaluation pipeline (validation metrics, holdout sets)
+    - Model deployment pipeline (canary releases, rollback capability)
+    - Monitoring pipeline (data drift, model drift, performance metrics)
+    - Feedback loop (retrain on new data, online learning)
+    
+  technology_stack: |
+    **ML Frameworks**:
+    - **TensorFlow**: Deep learning, production-ready, TFX for pipelines
+    - **PyTorch**: Research-friendly, Torchserve for serving
+    - **Scikit-learn**: Classical ML, simple and fast
+    - **XGBoost/LightGBM**: Gradient boosting for tabular data
+    - **Hugging Face**: NLP transformers, pre-trained models
+    
+    **ML Ops Platforms**:
+    - **MLflow**: Experiment tracking, model registry, deployment
+    - **Weights & Biases**: Experiment tracking, hyperparameter tuning
+    - **Kubeflow**: Kubernetes-native ML workflows
+    - **SageMaker**: AWS managed ML platform (training, hosting)
+    - **Vertex AI**: Google Cloud managed ML platform
+    
+    **Data Engineering**:
+    - **Data versioning**: DVC, Delta Lake, lakeFS
+    - **Feature store**: Feast, Tecton, Hopsworks
+    - **Data pipeline**: Airflow, Prefect, Dagster
+    - **Data warehouse**: Snowflake, BigQuery, Redshift
+    - **Data lake**: S3, GCS, Azure Blob Storage
+    
+    **Model Serving**:
+    - **Real-time**: FastAPI + Docker, TorchServe, TFServing
+    - **Batch**: Spark, Dask, Ray for distributed processing
+    - **Edge**: TensorFlow Lite, ONNX Runtime for mobile/IoT
+    - **API Gateway**: Kong, AWS API Gateway for rate limiting
+    
+    **Monitoring & Observability**:
+    - **Data drift**: Evidently AI, WhyLabs, Fiddler
+    - **Model performance**: Custom dashboards (Grafana, Datadog)
+    - **Infrastructure**: Prometheus, CloudWatch, Stackdriver
+    - **Explainability**: SHAP, LIME, Captum
+    
+  risks: |
+    **ML Pipeline Risks & Mitigations**:
+    
+    1. **Data Drift / Concept Drift** (HIGH)
+       - Risk: Model trained on old data, performance degrades over time (5-20% accuracy drop)
+       - Mitigation: Continuous monitoring, automated retraining triggers, canary deployments
+    
+    2. **Training-Serving Skew** (HIGH)
+       - Risk: Features computed differently in training vs production, accuracy drops
+       - Mitigation: Feature store for consistency, shared feature engineering code, integration tests
+    
+    3. **Model Overfitting** (MEDIUM)
+       - Risk: High training accuracy, poor generalization to production data
+       - Mitigation: Cross-validation, regularization, holdout test sets, early stopping
+    
+    4. **Inference Latency** (MEDIUM)
+       - Risk: Slow predictions (>1s), poor user experience, timeouts
+       - Mitigation: Model quantization, caching, batch inference, model distillation
+    
+    5. **Data Quality Issues** (HIGH)
+       - Risk: Missing values, outliers, label noise corrupt model training
+       - Mitigation: Data validation pipelines, anomaly detection, data quality metrics
+    
+    6. **Model Bias & Fairness** (MEDIUM)
+       - Risk: Biased predictions on protected attributes (race, gender), legal liability
+       - Mitigation: Fairness metrics (disparate impact), bias testing, diverse training data
+    
+  best_practices: |
+    **Data Management**:
+    - Version all datasets (training, validation, test)
+    - Track data lineage (source, transformations, quality checks)
+    - Validate data quality before training (completeness, consistency)
+    - Use feature store for consistent feature engineering
+    - Monitor data drift continuously (distribution shifts)
+    - Separate training/validation/test sets (no data leakage)
+    
+    **Model Development**:
+    - Track all experiments (hyperparameters, metrics, artifacts)
+    - Use cross-validation for robust evaluation
+    - Establish baseline models (simple heuristics, linear models)
+    - Monitor training metrics (loss curves, gradient norms)
+    - Save model checkpoints during training
+    - Document model assumptions and limitations
+    
+    **Model Deployment**:
+    - Canary deployments (10% traffic to new model, gradual rollout)
+    - A/B testing for model comparison (statistical significance)
+    - Rollback capability (keep previous model versions)
+    - Load testing before production (stress test inference API)
+    - Containerize models (Docker) for reproducibility
+    - API versioning (support multiple model versions)
+    
+    **Monitoring & Maintenance**:
+    - Monitor prediction latency (p50, p95, p99 percentiles)
+    - Monitor model accuracy on production data (ground truth feedback)
+    - Alert on data drift (statistical tests, KL divergence)
+    - Alert on model drift (accuracy drops >5%)
+    - Log all predictions for debugging and retraining
+    - Retrain models on schedule or triggered by drift
+    
+  anti_patterns: |
+    **Critical Mistakes to Avoid**:
+    - ❌ No data versioning (cannot reproduce experiments)
+    - ❌ Training on test data (inflated accuracy, poor production performance)
+    - ❌ No monitoring in production (silent model degradation)
+    - ❌ Different feature engineering in training vs serving (skew)
+    - ❌ No fallback when model fails (service downtime)
+    - ❌ Optimizing for wrong metric (accuracy on imbalanced data)
+    - ❌ No ablation studies (don't know what features help)
+    - ❌ Single train/test split (high variance in evaluation)
+    - ❌ No CI/CD for models (manual, error-prone deployments)
+    - ❌ Ignoring model bias and fairness (legal and ethical issues)
+
+recommended_tools:
+  - name: "MLflow"
+    purpose: "Experiment tracking, model registry, deployment"
+    url: "https://mlflow.org"
+  
+  - name: "Weights & Biases"
+    purpose: "Experiment tracking, hyperparameter optimization"
+    url: "https://wandb.ai"
+  
+  - name: "DVC"
+    purpose: "Data version control and pipeline management"
+    url: "https://dvc.org"
+  
+  - name: "Feast"
+    purpose: "Open-source feature store"
+    url: "https://feast.dev"
+  
+  - name: "Evidently AI"
+    purpose: "ML model monitoring and data drift detection"
+    url: "https://evidentlyai.com"
+
+testing_checklist:
+  - "✅ Training/validation/test sets properly split"
+  - "✅ Data quality validation before training"
+  - "✅ Cross-validation scores consistent"
+  - "✅ Model metrics tracked in experiment tracker"
+  - "✅ Inference latency under performance target"
+  - "✅ Feature engineering consistent (training vs serving)"
+  - "✅ Model versioned and registered"
+  - "✅ Canary deployment works (gradual rollout)"
+  - "✅ Data drift monitoring alerts set up"
+  - "✅ Rollback procedure tested"

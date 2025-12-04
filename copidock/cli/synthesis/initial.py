@@ -18,6 +18,15 @@ def generate_initial_stage_snapshot(thread_data, enhanced_context, persona, comp
             'decisions_constraints': synthesize_initial_decisions_constraints_with_template(enhanced_context, persona),
             'open_questions': "Template-based questions and considerations provided."
         }
+        
+        # Merge domain-specific synthesis hints if domain is specified
+        domain = enhanced_context.get('domain')
+        if domain:
+            from ...interactive.domains import get_domain_synthesis_hints, merge_synthesis_hints
+            domain_hints = get_domain_synthesis_hints(domain)
+            if domain_hints:
+                rprint(f"[dim]✓ Merging domain-specific guidance for: {domain}[/dim]")
+                sections = merge_synthesis_hints(sections, domain_hints)
     else:
         # WITHOUT template - empty structure only
         rprint(f"[dim]Using empty structure for manual customization[/dim]")

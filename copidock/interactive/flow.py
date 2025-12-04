@@ -11,9 +11,10 @@ def run_interactive_flow(
     default_focus: Optional[str], 
     default_output: Optional[str], 
     default_constraints: Optional[str],
-    stage: str = "development"  # Added stage parameter
+    stage: str = "development",
+    domain: Optional[str] = None
 ) -> Dict[str, str]:
-    """Run interactive prompting flow with smart defaults"""
+    """Run interactive prompting flow with smart defaults and optional domain template"""
     
     # Display context (stage-aware)
     display_detected_context(context, stage)
@@ -68,12 +69,37 @@ def run_interactive_flow(
     
     persona = typer.prompt(f"👤 Development persona", default=default_persona)
     
-    return {
+    # Domain-specific questions
+    domain_context = {}
+    if domain:
+        from .domains import display_domain_info, get_domain_questions
+        
+        # Show domain info
+        display_domain_info(domain)
+        
+        # Ask domain-specific questions
+        domain_questions = get_domain_questions(domain)
+        if domain_questions:
+            rprint("[bold cyan]📋 Domain-Specific Questions[/bold cyan]\n")
+            for q in domain_questions:
+                answer = prompt_multiline(
+                    q['prompt'],
+                    default=q.get('default', ''),
+                    help_text=q.get('help_text', '')
+                )
+                domain_context[q['key']] = answer
+    
+    result = {
         'focus': focus,
         'output': output,
         'constraints': constraints,
         'persona': persona
     }
+    
+    if domain_context:
+        result['domain_context'] = domain_context
+    
+    return result
 
 def display_detected_context(context: Dict[str, Any], stage: str = "development") -> None:
     """Display auto-detected context information - stage aware"""
