@@ -2,5 +2,7 @@
   "thread_id": "d83d3068-a77b-4462-9767-dd4bd99031db",
   "profile": "default",
   "goal": "",
-  "persona": "senior-backend-dev"
+  "persona": "senior-backend-dev",
+  "active_prd": "copidock/prds/20251205-140049-test-application.md",
+  "prd_version": "v1"
 }

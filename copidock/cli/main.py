@@ -7,6 +7,7 @@ from .gather import render_files_markdown
 
 from ..templates.loader import template_loader
 from .commands.thread import thread_start
+from .commands.prd import prd_app
 from .api import CopidockAPI, resolve_api
 from ..config.config import find_repo_root, load_state, save_state, DEFAULT_PROFILE
 
@@ -16,8 +17,11 @@ from ..interactive.flow import run_interactive_flow, confirm_snapshot_creation
 
 app = typer.Typer(
     add_completion=False, 
-    help="Copidock CLI - Serverless note management\n\nExamples:\n  copidock snapshot --hydrate\n  copidock rehydrate restore LATEST"
+    help="Copidock CLI - Serverless note management\n\nExamples:\n  copidock prd create --domain pwa\n  copidock snapshot --hydrate\n  copidock rehydrate restore LATEST"
 )
+
+# Register PRD commands
+app.add_typer(prd_app, name="prd", help="PRD creation and management")
 
 def create_rehydration_markdown(thread_data: Dict, synth_sections: Dict, file_paths: list, recent_commits: list, enhanced_context: Dict) -> str:
     created_at = datetime.utcnow().isoformat() + "Z"
@@ -278,20 +282,13 @@ def snapshot_cmd(
     constraints: Optional[str] = typer.Option(None, "--constraints", help="Limitations or requirements"),
     since: Optional[str] = typer.Option(None, "--since", help="Git time range"),
 
-    stage: str = typer.Option("auto", "--stage", help="Project stage: auto, initial, development, maintenance"),
+    # DEPRECATED: Use 'copidock prd create' instead
+    stage: Optional[str] = typer.Option(None, "--stage", help="[DEPRECATED] Use 'copidock prd create' for initial stage"),
+    domain: Optional[str] = typer.Option(None, "--domain", help="[DEPRECATED] Use 'copidock prd create --domain <name>'"),
     
     # Interactive and intelligence modes
     interactive: bool = typer.Option(False, "--interactive", help="Interactive mode for missing context"),
     auto_detect: bool = typer.Option(True, "--auto-detect", help="Auto-detect context from git and files"),
-    domain: Optional[str] = typer.Option(None, "--domain", help="Domain template: pwa, api-service, healthcare, fintech, ml-pipeline"),
-
-    # NEW: Optional CLI polish parameters
-#     to be able to do this in the future: 
-#     copidock snapshot --comprehensive --include "*.py"
-#     copidock snapshot --comprehensive --exclude "node_modules/*,tests/*,build/*"
-#     copidock snapshot --comprehensive \
-#   --include "api/*.py,services/*.py" \
-#   --exclude "scripts/*,migrations/*"
 
     embed_bytes: int = typer.Option(200000, "--embed-bytes", help="Max bytes to embed in rehydration"),
     include: Optional[str] = typer.Option(None, "--include", help="Glob pattern for files to include"),
@@ -302,39 +299,57 @@ def snapshot_cmd(
     api: Optional[str] = typer.Option(None, "--api", help="API base URL"),
     json_out: bool = typer.Option(False, "--json", help="JSON output"),
 ):  
-    """Create development snapshot with optional stage awareness
+    """
+    Create development snapshot (git-aware, tactical tracking)
+    
+    Use this for ongoing development to track changes and provide LLM context.
+    For strategic planning and project kickoff, use: copidock prd create
     
     Examples:
-        copidock snapshot --hydrate
-        copidock rehydrate restore LATEST
-        copidock snapshot --comprehensive --hydrate --focus "timer logic"
-        copidock snapshot --include "*.py" --exclude "test_*"
+        copidock snapshot create --hydrate
+        copidock snapshot create --comprehensive --hydrate
+        copidock snapshot create --comprehensive --hydrate --focus "timer logic"
     """
     
-
-    """Create development snapshot with optional stage awareness"""
+    # Deprecation warnings
+    if stage is not None:
+        rprint("[yellow]⚠️  WARNING: --stage flag is deprecated[/yellow]")
+        rprint("[yellow]   For initial project planning, use: copidock prd create[/yellow]")
+        rprint("[yellow]   Snapshots now auto-detect stage from git context[/yellow]\n")
+    
+    if domain is not None:
+        rprint("[yellow]⚠️  WARNING: --domain flag is deprecated for snapshots[/yellow]")
+        rprint("[yellow]   For domain-specific PRDs, use: copidock prd create --domain <name>[/yellow]")
+        rprint("[yellow]   Snapshots reference the active PRD automatically[/yellow]\n")
 
     if action != "create":
         rprint("[red]Only 'create' action supported[/red]")
         raise typer.Exit(1)
     
-    # Stage detection - ONLY ONE BLOCK
+    # Auto-detect stage from git context (no manual selection needed)
     repo_root = find_repo_root()
-    if stage == "auto":
-        context = auto_detect_context(repo_root)
-        
-        if any('README' in f.upper() for f in context.get('modified_files', [])):
-            detected_stage = "initial"
-            rprint(f"[dim]Auto-detected stage: {detected_stage} (README found in changes)[/dim]")
-        else:
-            detected_stage = "development"
-            rprint(f"[dim]Auto-detected stage: {detected_stage}[/dim]")
-    else:
-        detected_stage = stage
-        rprint(f"[dim]Using stage: {detected_stage}[/dim]")
-    
-    # Load state
+    context = auto_detect_context(repo_root)
     state = load_state(repo_root)
+    
+    # Check if PRD exists
+    has_prd = state.get('active_prd') is not None
+    has_git_history = len(context.get('modified_files', [])) > 0 or context.get('commit_count', 0) > 0
+    
+    # Auto-detect stage
+    if not has_prd and not has_git_history:
+        # Suggest creating PRD first
+        rprint("[yellow]💡 This looks like a new project![/yellow]")
+        rprint("[yellow]   Consider creating a PRD first: copidock prd create --domain <name>[/yellow]")
+        rprint("[yellow]   Or continue with snapshot (will use development mode)[/yellow]\n")
+        detected_stage = "development"
+    elif any('README' in f.upper() for f in context.get('modified_files', [])):
+        detected_stage = "initial"
+        rprint(f"[dim]Auto-detected stage: {detected_stage} (README found in changes)[/dim]")
+    else:
+        detected_stage = "development"
+        rprint(f"[dim]Auto-detected stage: {detected_stage}[/dim]")
+    
+    # Get thread ID
     thread_id = state.get("thread_id", "")
     
     if not thread_id:

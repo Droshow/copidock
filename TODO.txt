@@ -1,3 +1,57 @@
+
+*******************
+Fundamentalns First
+*******************
+Initial PRD (v1) → Sprint 1 → Snapshot → Refined PRD (v2) → Sprint 2 → Snapshot → ...
+
+** copidock prd create --domain pwa --interactive ** 
+
+Purpose: Bootstrap a new project from business vision
+Output: Comprehensive initial PRD
+Frequency: Once per project (or major pivot)
+
+
+** copidock snapshot create --comprehensive --hydrate ** 
+Purpose: Track progress, maintain context for LLM agents
+Output: Development snapshot with git diffs
+Frequency: Multiple times per day/week
+
+# === PROJECT START (Cold Start) ===
+copidock prd create --domain pwa --interactive
+# Asks: business context, domain questions
+# Generates: /prds/initial-prd-20251205.md
+# This becomes the SOURCE OF TRUTH
+
+# === DURING DEVELOPMENT ===
+copidock snapshot create --hydrate
+# Auto-detects git changes
+# References the initial PRD
+# Creates: /snapshots/20251205-143022-feature-work.md
+# Includes: what changed, why, next steps
+
+# === MAJOR MILESTONE / PIVOT ===
+copidock prd update --based-on LATEST_SNAPSHOT
+# Reviews recent snapshots
+# AI suggests PRD updates
+# Creates: /prds/updated-prd-20251206.md (v2)
+
+cd my-new-project
+git init
+
+# 1. Create initial PRD
+copidock prd create --domain pwa --interactive
+# Asks: What are you building? Success criteria? Constraints?
+# Asks: PWA-specific questions (offline, sync, etc.)
+# Generates: prds/initial-prd-20251205.md
+
+# 2. Start development
+# (code code code)
+
+# 3. Create snapshot for LLM context
+copidock snapshot create --hydrate
+# Auto-detects changes, references PRD
+# Uploads to S3 for rehydration
+
 Now that the backend is tested and solid, you’ve got two natural next steps:
 
 Developer UX polish (Phase 3):
